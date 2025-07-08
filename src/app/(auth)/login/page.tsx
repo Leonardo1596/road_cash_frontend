@@ -12,10 +12,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
-  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
+  password: z.string().min(1, { message: 'Por favor, insira sua senha.' }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -153,6 +154,12 @@ export default function LoginPage() {
               </Button>
             </form>
           </Form>
+          <div className="mt-4 text-center text-sm">
+            Não tem uma conta?{' '}
+            <Link href="/register" className="underline">
+              Cadastre-se aqui
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </main>

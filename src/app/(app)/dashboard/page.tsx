@@ -70,8 +70,8 @@ export default function DashboardPage() {
     if (dateRange) {
       const fetchResume = async () => {
         setIsLoading(true);
- setMaintenanceFuelData(null); // Reset maintenance data on new fetch
- setError(null);
+        setMaintenanceFuelData(null); // Reset maintenance data on new fetch
+        setError(null);
         const userId = localStorage.getItem('userId');
         const token = localStorage.getItem('token');
         if (!userId || !token) {
@@ -85,14 +85,14 @@ export default function DashboardPage() {
         const url = `https://road-cash.onrender.com/entries/resume?userId=${userId}&type=week&from=${from}&to=${to}`;
 
         try {
- // Fetch resume data
+          // Fetch resume data
           const response = await fetch(url, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (!response.ok) throw new Error("Falha ao buscar dados do resumo. Verifique sua conexão ou tente mais tarde.");
           const data = await response.json();
 
- // Fetch maintenance and fuel data
+          // Fetch maintenance and fuel data
           const maintenanceFuelUrl = `https://road-cash.onrender.com/maintenance-expense?userId=${userId}&from=${from}&to=${to}`;
           const maintenanceFuelResponse = await fetch(maintenanceFuelUrl, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -100,7 +100,7 @@ export default function DashboardPage() {
           if (!maintenanceFuelResponse.ok) throw new Error("Falha ao buscar dados de manutenção e combustível. Verifique sua conexão ou tente mais tarde.");
           const maintenanceFuelData = await maintenanceFuelResponse.json();
           setMaintenanceFuelData(maintenanceFuelData);
-          
+
           setResumeData(data);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Ocorreu um erro desconhecido.");
@@ -133,9 +133,9 @@ export default function DashboardPage() {
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-3/4" /> : (
               <div className="text-2xl font-bold">R$ {((maintenanceFuelData?.oleo ?? 0) + (maintenanceFuelData?.relacao ?? 0) + (maintenanceFuelData?.pneuDianteiro ?? 0) + (maintenanceFuelData?.pneuTraseiro ?? 0) + (maintenanceFuelData?.gasolina ?? 0)).toFixed(2).replace('.', ',')}</div>
- )}
- </CardContent>
- </Card>
+            )}
+          </CardContent>
+        </Card>
         <StatCard title="Distância" value={parseFloat((resumeData?.totalDistance ?? 0).toFixed(1))} icon={Milestone} isLoading={isLoading} unit="km" />
       </section>
 
@@ -152,44 +152,44 @@ export default function DashboardPage() {
       </Card>
 
       <Card className="shadow-sm">
- <CardHeader>
- <CardTitle className="text-sm font-medium">Detalhes de Manutenção e Combustível</CardTitle>
- </CardHeader>
- <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
- {isLoading ? (
- <>
- <Skeleton className="h-8 w-full" />
- <Skeleton className="h-8 w-full" />
- <Skeleton className="h-8 w-full" />
- <Skeleton className="h-8 w-full" />
- <Skeleton className="h-8 w-full" />
- </>
- ) : (
- <>
- <div>
- <div className="text-xs text-muted-foreground">Óleo</div>
- <div className="text-lg font-bold">R$ {(maintenanceFuelData?.oleo ?? 0).toFixed(2).replace('.', ',')}</div>
- </div>
- <div>
- <div className="text-xs text-muted-foreground">Relação</div>
- <div className="text-lg font-bold">R$ {(maintenanceFuelData?.relacao ?? 0).toFixed(2).replace('.', ',')}</div>
- </div>
- <div>
- <div className="text-xs text-muted-foreground">Pneu Dianteiro</div>
- <div className="text-lg font-bold">R$ {(maintenanceFuelData?.pneuDianteiro ?? 0).toFixed(2).replace('.', ',')}</div>
- </div>
- <div>
- <div className="text-xs text-muted-foreground">Pneu Traseiro</div>
- <div className="text-lg font-bold">R$ {(maintenanceFuelData?.pneuTraseiro ?? 0).toFixed(2).replace('.', ',')}</div>
- </div>
- <div>
- <div className="text-xs text-muted-foreground">Gasolina</div>
- <div className="text-lg font-bold">R$ {(maintenanceFuelData?.gasolina ?? 0).toFixed(2).replace('.', ',')}</div>
- </div>
- </>
- )}
- </CardContent>
- </Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Detalhes de Manutenção e Combustível</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {isLoading ? (
+            <>
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </>
+          ) : (
+            <>
+              <div>
+                <div className="text-xs text-muted-foreground">Óleo</div>
+                <div className="text-lg font-bold">R$ {(maintenanceFuelData?.oleo ?? 0).toFixed(2).replace('.', ',')}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Relação</div>
+                <div className="text-lg font-bold">R$ {(maintenanceFuelData?.relacao ?? 0).toFixed(2).replace('.', ',')}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Pneu Dianteiro</div>
+                <div className="text-lg font-bold">R$ {(maintenanceFuelData?.pneuDianteiro ?? 0).toFixed(2).replace('.', ',')}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Pneu Traseiro</div>
+                <div className="text-lg font-bold">R$ {(maintenanceFuelData?.pneuTraseiro ?? 0).toFixed(2).replace('.', ',')}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Gasolina</div>
+                <div className="text-lg font-bold">R$ {(maintenanceFuelData?.gasolina ?? 0).toFixed(2).replace('.', ',')}</div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
