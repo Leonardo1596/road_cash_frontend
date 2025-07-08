@@ -1,57 +1,29 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription,
-  DialogClose,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
-import { Loader2, Calendar as CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-
-const entrySchema = z
-  .object({
-    date: z.date({ required_error: "A data é obrigatória." }),
-    initialKm: z.coerce.number().min(0, "KM inicial deve ser positivo."),
-    finalKm: z.coerce.number().min(0, "KM final deve ser positivo."),
-    grossGain: z.coerce.number().min(0, "Ganho bruto deve ser positivo."),
-    foodExpense: z.coerce.number().min(0, "Gasto com alimentação deve ser positivo."),
-    otherExpense: z.coerce.number().min(0, "Outros gastos devem ser positivos."),
-  })
-  .refine((data) => data.finalKm >= data.initialKm, {
-    message: "KM final deve ser maior ou igual ao KM inicial.",
-    path: ["finalKm"],
-  });
-
-type EntryFormValues = z.infer<typeof entrySchema>;
+import { useEffect, useState } from "react";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 interface EntryFormProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   entry?: any;
+  activeTab: "trabalho" | "pessoal";
 }
 
 export function EntryForm({
@@ -59,257 +31,234 @@ export function EntryForm({
   onOpenChange,
   onSuccess,
   entry,
+  activeTab,
 }: EntryFormProps) {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [initialKm, setInitialKm] = useState("");
+  const [finalKm, setFinalKm] = useState("");
+  const [grossGain, setGrossGain] = useState("");
+  const [foodExpense, setFoodExpense] = useState("");
+  const [otherExpense, setOtherExpense] = useState("");
+  const [distance, setDistance] = useState("");
+
   const isEditing = !!entry;
 
-  const form = useForm<EntryFormValues>({
-    resolver: zodResolver(entrySchema),
-  });
-
   useEffect(() => {
-    if (isOpen) {
-      if (entry) {
-        form.reset({
-          ...entry,
-          date: entry.date ? new Date(entry.date) : new Date(),
-        });
-      } else {
-        form.reset({
-          date: new Date(),
-          initialKm: 0,
-          finalKm: 0,
-          grossGain: 0,
-          foodExpense: 0,
-          otherExpense: 0,
-        });
-      }
+    if (entry) {
+      setDate(entry.date ? new Date(entry.date) : new Date());
+      setInitialKm(entry.initialKm?.toString() || "");
+      setFinalKm(entry.finalKm?.toString() || "");
+      setGrossGain(entry.grossGain?.toString() || "");
+      setFoodExpense(entry.foodExpense?.toString() || "");
+      setOtherExpense(entry.otherExpense?.toString() || "");
+      setDistance(entry.distance?.toString() || "");
+    } else {
+      setDate(new Date());
+      setInitialKm("");
+      setFinalKm("");
+      setGrossGain("");
+      setFoodExpense("");
+      setOtherExpense("");
+      setDistance("");
     }
-  }, [entry, form, isOpen]);
+  }, [entry]);
 
-  const onSubmit = async (data: EntryFormValues) => {
-    setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     const userId = localStorage.getItem("userId");
     const token = localStorage.getItem("token");
+
     if (!userId || !token) {
       toast({
         variant: "destructive",
         title: "Erro",
         description: "Usuário não autenticado.",
       });
-      setIsLoading(false);
       return;
     }
 
-    const payload = {
-      ...data,
+    if (!date) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Data é obrigatória.",
+      });
+      return;
+    }
+
+    const body: any = {
       userId,
-      date: format(data.date, "yyyy-MM-dd"),
+      date: format(date, "yyyy-MM-dd"),
     };
 
-    const url = isEditing
-      ? `https://road-cash.onrender.com/entry/update/${userId}/${entry._id}`
-      : `https://road-cash.onrender.com/entry/create`;
+    if (activeTab === "trabalho") {
+      body.initialKm = Number(initialKm);
+      body.finalKm = Number(finalKm);
+      body.distance =
+        Number(finalKm) > Number(initialKm)
+          ? Number(finalKm) - Number(initialKm)
+          : 0;
+      body.grossGain = Number(grossGain);
+      body.foodExpense = Number(foodExpense);
+      body.otherExpense = Number(otherExpense);
+    } else {
+      body.distance = Number(distance);
+      // removido campo gasto total
+    }
 
-    const method = isEditing ? "PUT" : "POST";
+    const baseUrl =
+      activeTab === "pessoal"
+        ? "https://road-cash.onrender.com/personal-entry"
+        : "https://road-cash.onrender.com/entry";
+
+    const url = isEditing
+      ? `${baseUrl}/update/${userId}/${entry._id}`
+      : `${baseUrl}/create`;
 
     try {
       const response = await fetch(url, {
-        method,
+        method: isEditing ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.message || `Falha ao ${
-            isEditing ? "atualizar" : "criar"
-          } lançamento.`
-        );
+        throw new Error("Erro ao salvar o lançamento.");
       }
 
-      toast({
-        title: "Sucesso!",
-        description: `Lançamento ${
-          isEditing ? "atualizado" : "criado"
-        } com sucesso.`,
-      });
-      onSuccess();
+      toast({ title: "Sucesso", description: "Lançamento salvo com sucesso." });
       onOpenChange(false);
-    } catch (error) {
+      onSuccess();
+    } catch (err) {
       toast({
         variant: "destructive",
         title: "Erro",
         description:
-          error instanceof Error
-            ? error.message
-            : "Ocorreu um erro desconhecido.",
+          err instanceof Error ? err.message : "Erro ao salvar o lançamento.",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      {/* Aqui o modal tem largura limitada, centralizado e padding */}
-      <DialogContent className="w-full max-w-md mx-auto p-6">
+      <DialogContent className="max-w-md mx-auto px-4 sm:px-6 rounded-md">
         <DialogHeader>
           <DialogTitle className="font-headline">
-            {isEditing ? "Editar Lançamento" : "Adicionar Lançamento"}
+            {isEditing ? "Editar" : "Adicionar"} Lançamento{" "}
+            {activeTab === "pessoal" ? "Pessoal" : "de Trabalho"}
           </DialogTitle>
           <DialogDescription>
-            Preencha as informações do seu dia de trabalho.
+            Preencha os dados do seu dia de{" "}
+            {activeTab === "pessoal" ? "gasto pessoal" : "trabalho"}.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Data</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value
-                            ? format(field.value, "PPP", { locale: ptBR })
-                            : <span>Escolha uma data</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0"
-                      align="start"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                          date > new Date() || date < new Date("2000-01-01")
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="initialKm"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>KM Inicial</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="finalKm"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>KM Final</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="grossGain"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Ganho (Bruto)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...field}
-                      placeholder="R$ 0,00"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="foodExpense"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Gasto com Alimentação</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...field}
-                        placeholder="R$ 0,00"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="otherExpense"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Outros Gastos</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...field}
-                        placeholder="R$ 0,00"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">
-                  Cancelar
+
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          <div className="space-y-2">
+            <Label>Data</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full text-left flex items-center justify-between"
+                >
+                  {date ? (
+                    format(date, "PPP", { locale: ptBR })
+                  ) : (
+                    <span className="text-muted-foreground">Escolha uma data</span>
+                  )}
+                  <CalendarIcon className="ml-2 h-5 w-5 opacity-60" />
                 </Button>
-              </DialogClose>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Salvar
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  disabled={(date) =>
+                    date > new Date() || date < new Date("2000-01-01")
+                  }
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {activeTab === "trabalho" ? (
+            <>
+              <div className="flex gap-4">
+                <div className="flex-1 space-y-2">
+                  <Label>KM Inicial</Label>
+                  <Input
+                    type="number"
+                    value={initialKm}
+                    onChange={(e) => setInitialKm(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Label>KM Final</Label>
+                  <Input
+                    type="number"
+                    value={finalKm}
+                    onChange={(e) => setFinalKm(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Ganho Bruto</Label>
+                <Input
+                  type="number"
+                  value={grossGain}
+                  onChange={(e) => setGrossGain(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1 space-y-2">
+                  <Label>Gasto com Lanche</Label>
+                  <Input
+                    type="number"
+                    value={foodExpense}
+                    onChange={(e) => setFoodExpense(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Label>Outros Gastos</Label>
+                  <Input
+                    type="number"
+                    value={otherExpense}
+                    onChange={(e) => setOtherExpense(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-2">
+              <Label>Distância (km)</Label>
+              <Input
+                type="number"
+                value={distance}
+                onChange={(e) => setDistance(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          <Button type="submit" className="w-full">
+            {isEditing ? "Atualizar" : "Salvar"}
+          </Button>
+        </form>
       </DialogContent>
     </Dialog>
   );
