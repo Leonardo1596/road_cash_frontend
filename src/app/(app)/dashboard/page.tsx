@@ -38,10 +38,18 @@ interface MaintenanceFuelData {
 const StatCard = ({ title, value, icon, isLoading, currency = false, unit = '' }: { title: string, value: number, icon: LucideIcon, isLoading: boolean, currency?: boolean, unit?: string }) => {
   const Icon = icon;
   return (
-    <Card className="shadow-sm">
+    <Card className={`shadow-sm ${title === "Ganho Líquido" || title === "Ganho (Bruto)"
+        ? 'bg-green-50 dark:bg-green-900'
+        : title === "Despesas" || title === "Gasto com Alimentação" || title === "Outros Gastos" || title === "Gasto com gasolina"
+          ? 'bg-red-50 dark:bg-red-900'
+          : 'bg-card'
+      }`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <Icon className={`h-4 w-4 ${title === "Ganho Líquido" || title === "Ganho (Bruto)" ? 'text-green-600 dark:text-green-300'
+            : title === "Despesas" || title === "Gasto com Alimentação" || title === "Outros Gastos" || title === "Gasto com gasolina" ? 'text-red-600 dark:text-red-300'
+              : 'text-muted-foreground'
+          }`} />
       </CardHeader>
       <CardContent>
         {isLoading ? <Skeleton className="h-8 w-3/4" /> : (
@@ -69,65 +77,65 @@ export default function DashboardPage() {
 
 
   useEffect(() => {
-  if (dateRange) {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setMaintenanceFuelData(null);
-      setPersonalExpenseData(null);
-      setError(null);
-
-      const userId = localStorage.getItem('userId');
-      const token = localStorage.getItem('token');
-      if (!userId || !token) {
-        setError("Usuário não autenticado.");
-        setIsLoading(false);
-        return;
-      }
-
-      const from = format(dateRange.start, "yyyy-MM-dd");
-      const to = format(dateRange.end, "yyyy-MM-dd");
-
-      try {
-        // Fetch resume
-        const resumeResponse = await fetch(
-          `https://road-cash.onrender.com/entries/resume?userId=${userId}&type=week&from=${from}&to=${to}`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        if (!resumeResponse.ok) throw new Error("Erro ao buscar resumo.");
-        const resume = await resumeResponse.json();
-        setResumeData(resume);
-
-        // Fetch maintenance
-        const maintenanceResponse = await fetch(
-          `https://road-cash.onrender.com/maintenance-expense?userId=${userId}&from=${from}&to=${to}`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        if (!maintenanceResponse.ok) throw new Error("Erro ao buscar manutenção.");
-        const maintenance = await maintenanceResponse.json();
-        setMaintenanceFuelData(maintenance);
-
-        // Fetch personal
-        const personalResponse = await fetch(
-          `https://road-cash.onrender.com/personal-maintenance-expense?userId=${userId}&from=${from}&to=${to}`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        if (!personalResponse.ok) throw new Error("Erro ao buscar despesas pessoais.");
-        const personal = await personalResponse.json();
-        setPersonalExpenseData(personal);
-
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Erro desconhecido.");
-        setResumeData(null);
+    if (dateRange) {
+      const fetchData = async () => {
+        setIsLoading(true);
         setMaintenanceFuelData(null);
         setPersonalExpenseData(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+        setError(null);
 
-    fetchData();
-  }
-}, [dateRange]);
+        const userId = localStorage.getItem('userId');
+        const token = localStorage.getItem('token');
+        if (!userId || !token) {
+          setError("Usuário não autenticado.");
+          setIsLoading(false);
+          return;
+        }
+
+        const from = format(dateRange.start, "yyyy-MM-dd");
+        const to = format(dateRange.end, "yyyy-MM-dd");
+
+        try {
+          // Fetch resume
+          const resumeResponse = await fetch(
+            `https://road-cash.onrender.com/entries/resume?userId=${userId}&type=week&from=${from}&to=${to}`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+          if (!resumeResponse.ok) throw new Error("Erro ao buscar resumo.");
+          const resume = await resumeResponse.json();
+          setResumeData(resume);
+
+          // Fetch maintenance
+          const maintenanceResponse = await fetch(
+            `https://road-cash.onrender.com/maintenance-expense?userId=${userId}&from=${from}&to=${to}`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+          if (!maintenanceResponse.ok) throw new Error("Erro ao buscar manutenção.");
+          const maintenance = await maintenanceResponse.json();
+          setMaintenanceFuelData(maintenance);
+
+          // Fetch personal
+          const personalResponse = await fetch(
+            `https://road-cash.onrender.com/personal-maintenance-expense?userId=${userId}&from=${from}&to=${to}`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+          if (!personalResponse.ok) throw new Error("Erro ao buscar despesas pessoais.");
+          const personal = await personalResponse.json();
+          setPersonalExpenseData(personal);
+
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Erro desconhecido.");
+          setResumeData(null);
+          setMaintenanceFuelData(null);
+          setPersonalExpenseData(null);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchData();
+    }
+  }, [dateRange]);
 
 
   return (
@@ -147,9 +155,11 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">Despesas de Manutenção e Combustível</CardTitle>
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
+
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-3/4" /> : (
-              <div className="text-2xl font-bold">R$ {((maintenanceFuelData?.oleo ?? 0) + (maintenanceFuelData?.relacao ?? 0) + (maintenanceFuelData?.pneuDianteiro ?? 0) + (maintenanceFuelData?.pneuTraseiro ?? 0) + (maintenanceFuelData?.gasolina ?? 0)).toFixed(2).replace('.', ',')}</div>
+              <div className={`text-2xl font-bold ${((maintenanceFuelData?.oleo ?? 0) + (maintenanceFuelData?.relacao ?? 0) + (maintenanceFuelData?.pneuDianteiro ?? 0) + (maintenanceFuelData?.pneuTraseiro ?? 0) + (maintenanceFuelData?.gasolina ?? 0)) > 0 ? 'text-red-600 dark:text-red-300' : ''
+                }`}>R$ {((maintenanceFuelData?.oleo ?? 0) + (maintenanceFuelData?.relacao ?? 0) + (maintenanceFuelData?.pneuDianteiro ?? 0) + (maintenanceFuelData?.pneuTraseiro ?? 0) + (maintenanceFuelData?.gasolina ?? 0)).toFixed(2).replace('.', ',')}</div>
             )}
           </CardContent>
         </Card>
@@ -194,28 +204,35 @@ export default function DashboardPage() {
                   <>
                     <div>
                       <div className="text-xs text-muted-foreground">Óleo</div>
-                      <div className="text-lg font-bold">R$ {(maintenanceFuelData?.oleo ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div className={`text-lg font-bold ${(maintenanceFuelData?.oleo ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
+                        }`}>R$ {(maintenanceFuelData?.oleo ?? 0).toFixed(2).replace('.', ',')}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Relação</div>
-                      <div className="text-lg font-bold">R$ {(maintenanceFuelData?.relacao ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div className={`text-lg font-bold ${(maintenanceFuelData?.relacao ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
+                        }`}>R$ {(maintenanceFuelData?.relacao ?? 0).toFixed(2).replace('.', ',')}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Pneu Dianteiro</div>
-                      <div className="text-lg font-bold">R$ {(maintenanceFuelData?.pneuDianteiro ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div className={`text-lg font-bold ${(maintenanceFuelData?.pneuDianteiro ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
+                        }`}>R$ {(maintenanceFuelData?.pneuDianteiro ?? 0).toFixed(2).replace('.', ',')}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Pneu Traseiro</div>
-                      <div className="text-lg font-bold">R$ {(maintenanceFuelData?.pneuTraseiro ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div className={`text-lg font-bold ${(maintenanceFuelData?.pneuTraseiro ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
+                        }`}>R$ {(maintenanceFuelData?.pneuTraseiro ?? 0).toFixed(2).replace('.', ',')}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Gasolina</div>
-                      <div className="text-lg font-bold">R$ {(maintenanceFuelData?.gasolina ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div className={`text-lg font-bold ${(maintenanceFuelData?.gasolina ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
+                        }`}>R$ {(maintenanceFuelData?.gasolina ?? 0).toFixed(2).replace('.', ',')}</div>
                     </div>
                   </>
                 )}
               </div>
             </TabsContent>
+
+
 
             {/* ABA PESSOAL */}
             <TabsContent value="pessoal">
@@ -232,23 +249,28 @@ export default function DashboardPage() {
                   <>
                     <div>
                       <div className="text-xs text-muted-foreground">Óleo</div>
-                      <div className="text-lg font-bold">R$ {(personalExpenseData?.oleo ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div className={`text-lg font-bold ${(personalExpenseData?.oleo ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
+                        }`}>R$ {(personalExpenseData?.oleo ?? 0).toFixed(2).replace('.', ',')}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Relação</div>
-                      <div className="text-lg font-bold">R$ {(personalExpenseData?.relacao ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div className={`text-lg font-bold ${(personalExpenseData?.relacao ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
+                        }`}>R$ {(personalExpenseData?.relacao ?? 0).toFixed(2).replace('.', ',')}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Pneu Dianteiro</div>
-                      <div className="text-lg font-bold">R$ {(personalExpenseData?.pneuDianteiro ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div className={`text-lg font-bold ${(personalExpenseData?.pneuDianteiro ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
+                        }`}>R$ {(personalExpenseData?.pneuDianteiro ?? 0).toFixed(2).replace('.', ',')}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Pneu Traseiro</div>
-                      <div className="text-lg font-bold">R$ {(personalExpenseData?.pneuTraseiro ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div className={`text-lg font-bold ${(personalExpenseData?.pneuTraseiro ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
+                        }`}>R$ {(personalExpenseData?.pneuTraseiro ?? 0).toFixed(2).replace('.', ',')}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Gasolina</div>
-                      <div className="text-lg font-bold">R$ {(personalExpenseData?.gasolina ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div className={`text-lg font-bold ${(personalExpenseData?.gasolina ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
+                        }`}>R$ {(personalExpenseData?.gasolina ?? 0).toFixed(2).replace('.', ',')}</div>
                     </div>
                   </>
                 )}

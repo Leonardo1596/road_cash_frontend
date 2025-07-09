@@ -245,9 +245,21 @@ export default function LancamentosPage() {
                       <TableCell>{entry.distance.toFixed(1)} km</TableCell>
                       {activeTab === "trabalho" ? (
                         <>
-                          <TableCell>R$ {(entry.grossGain || 0).toFixed(2).replace(".", ",")}</TableCell>
-                          <TableCell>R$ {(entry.liquidGain || 0).toFixed(2).replace(".", ",")}</TableCell>
-                          <TableCell>R$ {(entry.spent || 0).toFixed(2).replace(".", ",")}</TableCell>
+                          <TableCell className={
+                            (entry.grossGain || 0) > 0
+                              ? "text-green-600"
+                              : (entry.grossGain || 0) < 0
+                              ? "text-red-600"
+                              : "text-muted-foreground"
+                          }>R$ {(entry.grossGain || 0).toFixed(2).replace(".", ",")}</TableCell>
+                          <TableCell className={
+                            (entry.liquidGain || 0) > 0
+                              ? "text-green-600"
+                              : (entry.liquidGain || 0) < 0
+                              ? "text-red-600"
+                              : "text-muted-foreground"
+                          }>R$ {(entry.liquidGain || 0).toFixed(2).replace(".", ",")}</TableCell>
+                          <TableCell className={(entry.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"}>R$ {(entry.spent || 0).toFixed(2).replace(".", ",")}</TableCell>
                           <TableCell>{(entry.percentageSpent || 0).toFixed(2).replace(".", ",")}%</TableCell>
                         </>
                       ) : (
@@ -255,7 +267,8 @@ export default function LancamentosPage() {
                           <TableCell>R$ {(entry.spent || 0).toFixed(2).replace(".", ",")}</TableCell>
                           <TableCell>R$ {(entry.costPerKm || 0).toFixed(2).replace(".", ",")}</TableCell>
                           <TableCell>R$ {(entry.gasolinePrice || 0).toFixed(2).replace(".", ",")}</TableCell>
-                          <TableCell>R$ {(entry.gasolineExpense || 0).toFixed(2).replace(".", ",")}</TableCell>
+                          <TableCell className={(entry.gasolineExpense || 0) > 0 ? "text-red-600" : "text-muted-foreground"}>
+                            R$ {(entry.gasolineExpense || 0).toFixed(2).replace(".", ",")}</TableCell>
                         </>
                       )}
                       <TableCell className="text-right">
@@ -311,14 +324,28 @@ export default function LancamentosPage() {
 
                     {activeTab === "trabalho" ? (
                       <>
-                        <div className="text-sm"><strong>Ganho Bruto:</strong> R$ {entry.grossGain?.toFixed(2).replace(".", ",")}</div>
-                        <div className="text-sm"><strong>Ganho Líquido:</strong> R$ {entry.liquidGain?.toFixed(2).replace(".", ",")}</div>
-                        <div className="text-sm"><strong>Despesas:</strong> R$ {entry.spent?.toFixed(2).replace(".", ",")}</div>
+                        <div className={`text-sm ${
+ (entry.grossGain || 0) > 0
+                            ? "text-green-600"
+ : (entry.grossGain || 0) < 0
+                            ? "text-red-600"
+ : "text-muted-foreground"
+                        }`}><strong>Ganho Bruto:</strong> R$ {entry.grossGain?.toFixed(2).replace(".", ",")}</div>
+                        <div className={`text-sm ${
+ (entry.liquidGain || 0) > 0
+                            ? "text-green-600"
+ : (entry.liquidGain || 0) < 0
+                            ? "text-red-600"
+ : "text-muted-foreground"
+                        }`}><strong>Ganho Líquido:</strong> R$ {entry.liquidGain?.toFixed(2).replace(".", ",")}</div>
+                        <div className={`text-sm ${
+ (entry.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"
+                        }`}><strong>Despesas:</strong> R$ {entry.spent?.toFixed(2).replace(".", ",")}</div>
                         <div className="text-sm"><strong>Gasto em %:</strong> {entry.percentageSpent?.toFixed(2).replace(".", ",")}%</div>
                       </>
                     ) : (
                       <>
-                        <div className="text-sm"><strong>Gasto:</strong> R$ {entry.spent?.toFixed(2).replace(".", ",")}</div>
+                        <div className={`text-sm ${ (entry.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"}`}><strong>Gasto:</strong> R$ {entry.spent?.toFixed(2).replace(".", ",")}</div>
                         <div className="text-sm"><strong>R$/km:</strong> R$ {entry.costPerKm?.toFixed(2).replace(".", ",")}</div>
                         <div className="text-sm"><strong>Preço Gasolina:</strong> R$ {entry.gasolinePrice?.toFixed(2).replace(".", ",")}</div>
                         <div className="text-sm"><strong>Gasto Gasolina:</strong> R$ {entry.gasolineExpense?.toFixed(2).replace(".", ",")}</div>
