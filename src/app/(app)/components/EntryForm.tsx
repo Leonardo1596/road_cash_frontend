@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { NumericFormat } from "react-number-format";
 
 interface EntryFormProps {
   isOpen: boolean;
@@ -46,7 +47,8 @@ export function EntryForm({
   const isEditing = !!entry;
 
   useEffect(() => {
-    if (entry) {
+  if (isOpen) {
+    if (isEditing && entry) {
       setDate(entry.date ? new Date(entry.date) : new Date());
       setInitialKm(entry.initialKm?.toString() || "");
       setFinalKm(entry.finalKm?.toString() || "");
@@ -63,7 +65,9 @@ export function EntryForm({
       setOtherExpense("");
       setDistance("");
     }
-  }, [entry]);
+  }
+}, [isOpen, isEditing, entry]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,18 +98,18 @@ export function EntryForm({
     };
 
     if (activeTab === "trabalho") {
-      body.initialKm = Number(initialKm);
-      body.finalKm = Number(finalKm);
+      body.initialKm = Number(initialKm) || 0;
+      body.finalKm = Number(finalKm) || 0;
       body.distance =
         Number(finalKm) > Number(initialKm)
           ? Number(finalKm) - Number(initialKm)
           : 0;
-      body.grossGain = Number(grossGain);
-      body.foodExpense = Number(foodExpense);
-      body.otherExpense = Number(otherExpense);
+      body.grossGain = Number(grossGain) || 0;
+      body.foodExpense = Number(foodExpense) || 0;
+      body.otherExpense = Number(otherExpense) || 0;
     } else {
-      body.distance = Number(distance);
-      // removido campo gasto total
+      body.distance = Number(distance) || 0;
+      // campo gasto total removido conforme seu pedido
     }
 
     const baseUrl =
@@ -198,7 +202,7 @@ export function EntryForm({
                     type="number"
                     value={initialKm}
                     onChange={(e) => setInitialKm(e.target.value)}
-                    required
+                    placeholder="0 km"
                   />
                 </div>
                 <div className="flex-1 space-y-2">
@@ -207,38 +211,59 @@ export function EntryForm({
                     type="number"
                     value={finalKm}
                     onChange={(e) => setFinalKm(e.target.value)}
-                    required
+                    placeholder="0 km"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label>Ganho Bruto</Label>
-                <Input
-                  type="number"
+                <NumericFormat
                   value={grossGain}
-                  onChange={(e) => setGrossGain(e.target.value)}
-                  required
+                  onValueChange={(values) => setGrossGain(values.value)}
+                  thousandSeparator="."
+                  decimalSeparator=","
+                  prefix="R$ "
+                  decimalScale={2}
+                  fixedDecimalScale={true}
+                  allowLeadingZeros={false}
+                  placeholder="R$ 0,00"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                  customInput={Input}
                 />
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-1 space-y-2">
                   <Label>Gasto com Lanche</Label>
-                  <Input
-                    type="number"
+                  <NumericFormat
                     value={foodExpense}
-                    onChange={(e) => setFoodExpense(e.target.value)}
-                    required
+                    onValueChange={(values) => setFoodExpense(values.value)}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="R$ "
+                    decimalScale={2}
+                    fixedDecimalScale={true}
+                    allowLeadingZeros={false}
+                    placeholder="R$ 0,00"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    customInput={Input}
                   />
                 </div>
                 <div className="flex-1 space-y-2">
                   <Label>Outros Gastos</Label>
-                  <Input
-                    type="number"
+                  <NumericFormat
                     value={otherExpense}
-                    onChange={(e) => setOtherExpense(e.target.value)}
-                    required
+                    onValueChange={(values) => setOtherExpense(values.value)}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="R$ "
+                    decimalScale={2}
+                    fixedDecimalScale={true}
+                    allowLeadingZeros={false}
+                    placeholder="R$ 0,00"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2"
+                    customInput={Input}
                   />
                 </div>
               </div>
@@ -250,7 +275,7 @@ export function EntryForm({
                 type="number"
                 value={distance}
                 onChange={(e) => setDistance(e.target.value)}
-                required
+                placeholder="0"
               />
             </div>
           )}
