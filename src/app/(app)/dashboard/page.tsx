@@ -39,16 +39,16 @@ const StatCard = ({ title, value, icon, isLoading, currency = false, unit = '' }
   const Icon = icon;
   return (
     <Card className={`shadow-sm ${title === "Ganho Líquido" || title === "Ganho (Bruto)"
-        ? 'bg-green-50 dark:bg-green-900'
-        : title === "Despesas" || title === "Gasto com Alimentação" || title === "Outros Gastos" || title === "Gasto com gasolina"
-          ? 'bg-red-50 dark:bg-red-900'
-          : 'bg-card'
+      ? 'bg-green-50 dark:bg-green-900'
+      : title === "Despesas" || title === "Gasto com Alimentação" || title === "Outros Gastos" || title === "Gasto com gasolina"
+        ? 'bg-red-50 dark:bg-red-900'
+        : 'bg-card'
       }`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className={`h-4 w-4 ${title === "Ganho Líquido" || title === "Ganho (Bruto)" ? 'text-green-600 dark:text-green-300'
-            : title === "Despesas" || title === "Gasto com Alimentação" || title === "Outros Gastos" || title === "Gasto com gasolina" ? 'text-red-600 dark:text-red-300'
-              : 'text-muted-foreground'
+          : title === "Despesas" || title === "Gasto com Alimentação" || title === "Outros Gastos" || title === "Gasto com gasolina" ? 'text-red-600 dark:text-red-300'
+            : 'text-muted-foreground'
           }`} />
       </CardHeader>
       <CardContent>
@@ -122,6 +122,7 @@ export default function DashboardPage() {
           if (!personalResponse.ok) throw new Error("Erro ao buscar despesas pessoais.");
           const personal = await personalResponse.json();
           setPersonalExpenseData(personal);
+          personalExpenseData && console.log(personalExpenseData);
 
         } catch (err) {
           setError(err instanceof Error ? err.message : "Erro desconhecido.");
@@ -226,6 +227,9 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Gasolina</div>
                       <div className={`text-lg font-bold ${(maintenanceFuelData?.gasolina ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
                         }`}>R$ {(maintenanceFuelData?.gasolina ?? 0).toFixed(2).replace('.', ',')}</div>
+                    </div><div>
+                      <div className="text-xs text-muted-foreground">Distância</div>
+                      <div className="text-lg font-bold">{(maintenanceFuelData?.totalDistance ?? 0).toFixed(1).replace('.', ',')} km</div>
                     </div>
                   </>
                 )}
@@ -271,6 +275,10 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Gasolina</div>
                       <div className={`text-lg font-bold ${(personalExpenseData?.gasolina ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
                         }`}>R$ {(personalExpenseData?.gasolina ?? 0).toFixed(2).replace('.', ',')}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Gasolina</div>
+                      <div className="text-lg font-bold">{(personalExpenseData?.totalDistance ?? 0).toFixed(1).replace('.', ',')} km</div>
                     </div>
                   </>
                 )}
