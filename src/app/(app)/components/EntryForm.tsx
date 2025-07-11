@@ -39,6 +39,8 @@ export function EntryForm({
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [initialKm, setInitialKm] = useState("");
   const [finalKm, setFinalKm] = useState("");
+  const [hours, setHours] = useState("");
+  const [minutes, setMinutes] = useState("");
   const [grossGain, setGrossGain] = useState("");
   const [foodExpense, setFoodExpense] = useState("");
   const [otherExpense, setOtherExpense] = useState("");
@@ -47,26 +49,31 @@ export function EntryForm({
   const isEditing = !!entry;
 
   useEffect(() => {
-  if (isOpen) {
-    if (isEditing && entry) {
-      setDate(entry.date ? new Date(entry.date) : new Date());
-      setInitialKm(entry.initialKm?.toString() || "");
-      setFinalKm(entry.finalKm?.toString() || "");
-      setGrossGain(entry.grossGain?.toString() || "");
-      setFoodExpense(entry.foodExpense?.toString() || "");
-      setOtherExpense(entry.otherExpense?.toString() || "");
-      setDistance(entry.distance?.toString() || "");
-    } else {
-      setDate(new Date());
-      setInitialKm("");
-      setFinalKm("");
-      setGrossGain("");
-      setFoodExpense("");
-      setOtherExpense("");
-      setDistance("");
+    if (isOpen) {
+      if (isEditing && entry) {
+        setDate(entry.date ? new Date(entry.date + "T00:00:00") : new Date());
+        setInitialKm(entry.initialKm?.toString() || "");
+        setFinalKm(entry.finalKm?.toString() || "");
+        setHours(Math.floor(entry.timeWorked / 60).toString());
+        setMinutes((entry.timeWorked % 60).toString());
+        setGrossGain(entry.grossGain?.toString() || "");
+        setFoodExpense(entry.foodExpense?.toString() || "");
+        setOtherExpense(entry.otherExpense?.toString() || "");
+        setDistance(entry.distance?.toString() || "");
+        console.log(entry);
+      } else {
+        setDate(new Date());
+        setInitialKm("");
+        setFinalKm("");
+        setHours("");
+        setMinutes("");
+        setGrossGain("");
+        setFoodExpense("");
+        setOtherExpense("");
+        setDistance("");
+      }
     }
-  }
-}, [isOpen, isEditing, entry]);
+  }, [isOpen, isEditing, entry]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,6 +99,9 @@ export function EntryForm({
       return;
     }
 
+    const timeWorked =
+      (parseInt(hours || "0", 10) * 60) + parseInt(minutes || "0", 10);
+
     const body: any = {
       userId,
       date: format(date, "yyyy-MM-dd"),
@@ -105,11 +115,11 @@ export function EntryForm({
           ? Number(finalKm) - Number(initialKm)
           : 0;
       body.grossGain = Number(grossGain) || 0;
+      body.timeWorked = Number(timeWorked) || 0;
       body.foodExpense = Number(foodExpense) || 0;
       body.otherExpense = Number(otherExpense) || 0;
     } else {
       body.distance = Number(distance) || 0;
-      // campo gasto total removido conforme seu pedido
     }
 
     const baseUrl =
@@ -215,6 +225,29 @@ export function EntryForm({
                   />
                 </div>
               </div>
+              <div className="flex gap-4">
+                <div className="flex-1 space-y-2">
+                  <Label>Horas</Label>
+                  <Input
+                    type="number"
+                    value={hours}
+                    onChange={(e) => setHours(e.target.value)}
+                    placeholder="horas"
+                  />
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex-1 space-y-2">
+                    <Label>Minutos</Label>
+                    <Input
+                      type="number"
+                      value={minutes}
+                      onChange={(e) => setMinutes(e.target.value)}
+                      placeholder="minutos"
+                    />
+                  </div>
+                </div>
+              </div>
 
               <div className="space-y-2">
                 <Label>Ganho Bruto</Label>
@@ -285,6 +318,6 @@ export function EntryForm({
           </Button>
         </form>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   );
 }
