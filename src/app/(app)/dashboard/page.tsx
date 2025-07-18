@@ -4,8 +4,20 @@ import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WeekSelector } from "../components/WeekSelector";
 import { format } from "date-fns";
-import { Loader2, TrendingUp, TrendingDown, Milestone, Utensils, ShoppingCart, Fuel, Wrench, GitCommitHorizontal, Footprints, AlertCircle } from "lucide-react";
-import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Loader2,
+  TrendingUp,
+  TrendingDown,
+  Milestone,
+  Utensils,
+  ShoppingCart,
+  Fuel,
+  Wrench,
+  GitCommitHorizontal,
+  Footprints,
+  AlertCircle,
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { LucideIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -25,6 +37,7 @@ interface ResumeData {
     gasolina: number;
   };
 }
+
 interface MaintenanceFuelData {
   oleo: number;
   relacao: number;
@@ -34,27 +47,79 @@ interface MaintenanceFuelData {
   totalDistance: number;
 }
 
+/** ------------------------------------------------------------------
+ * Utility helpers
+ * -----------------------------------------------------------------*/
+const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
 
-const StatCard = ({ title, value, icon, isLoading, currency = false, unit = '' }: { title: string, value: number, icon: LucideIcon, isLoading: boolean, currency?: boolean, unit?: string }) => {
+/** Class name helper that decides the bg + icon tint based on title.
+ *  NOTE: This is intentionally string-based because the calling sites
+ *  already pass semantic Portuguese titles. If you later i18n, consider
+ *  adding a `variant` prop instead.
+ */
+function getStatVariantClasses(title: string) {
+  const gainTitles = ["Ganho Líquido", "Ganho (Bruto)"];
+  const expenseTitles = [
+    "Despesas",
+    "Gasto com Alimentação",
+    "Outros Gastos",
+    "Gasto com gasolina",
+    "Despesas de Manutenção e Combustível", // <— newly added so it styles consistently
+  ];
+
+  if (gainTitles.includes(title)) {
+    return {
+      card: "bg-green-50 dark:bg-green-900",
+      icon: "text-green-600 dark:text-green-300",
+      value: "text-green-700 dark:text-green-200", // optional value tint (not used currently)
+    } as const;
+  }
+  if (expenseTitles.includes(title)) {
+    return {
+      card: "bg-red-50 dark:bg-red-900",
+      icon: "text-red-600 dark:text-red-300",
+      value: "text-red-700 dark:text-red-200",
+    } as const;
+  }
+  return {
+    card: "bg-card",
+    icon: "text-muted-foreground",
+    value: "",
+  } as const;
+}
+
+/**
+ * Generic StatCard used across dashboard summary grids.
+ */
+const StatCard = ({
+  title,
+  value,
+  icon,
+  isLoading,
+  currency = false,
+  unit = "",
+}: {
+  title: string;
+  value: number;
+  icon: LucideIcon;
+  isLoading: boolean;
+  currency?: boolean;
+  unit?: string;
+}) => {
   const Icon = icon;
+  const variant = getStatVariantClasses(title);
   return (
-    <Card className={`shadow-sm ${title === "Ganho Líquido" || title === "Ganho (Bruto)"
-      ? 'bg-green-50 dark:bg-green-900'
-      : title === "Despesas" || title === "Gasto com Alimentação" || title === "Outros Gastos" || title === "Gasto com gasolina"
-        ? 'bg-red-50 dark:bg-red-900'
-        : 'bg-card'
-      }`}>
+    <Card className={`shadow-sm ${variant.card}`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className={`h-4 w-4 ${title === "Ganho Líquido" || title === "Ganho (Bruto)" ? 'text-green-600 dark:text-green-300'
-          : title === "Despesas" || title === "Gasto com Alimentação" || title === "Outros Gastos" || title === "Gasto com gasolina" ? 'text-red-600 dark:text-red-300'
-            : 'text-muted-foreground'
-          }`} />
+        <Icon className={`h-4 w-4 ${variant.icon}`} />
       </CardHeader>
       <CardContent>
-        {isLoading ? <Skeleton className="h-8 w-3/4" /> : (
+        {isLoading ? (
+          <Skeleton className="h-8 w-3/4" />
+        ) : (
           <div className="text-2xl font-bold">
-            {currency ? `R$ ${value.toFixed(2).replace('.', ',')}` : value}
+            {currency ? formatCurrency(value) : value}
             {unit && <span className="text-xs text-muted-foreground"> {unit}</span>}
           </div>
         )}
@@ -75,110 +140,165 @@ export default function DashboardPage() {
     setDateRange({ start, end });
   }, []);
 
+  // Convenience derived totals ------------------------------------------------
+  const maintenanceFuelTotal =
+    (maintenanceFuelData?.oleo ?? 0) +
+    (maintenanceFuelData?.relacao ?? 0) +
+    (maintenanceFuelData?.pneuDianteiro ?? 0) +
+    (maintenanceFuelData?.pneuTraseiro ?? 0) +
+    (maintenanceFuelData?.gasolina ?? 0);
 
+  // Fetch data when dateRange changes -----------------------------------------
   useEffect(() => {
-    if (dateRange) {
-      const fetchData = async () => {
-        setIsLoading(true);
+    if (!dateRange) return;
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      setMaintenanceFuelData(null);
+      setPersonalExpenseData(null);
+      setError(null);
+
+      const userId = localStorage.getItem("userId");
+      const token = localStorage.getItem("token");
+      if (!userId || !token) {
+        setError("Usuário não autenticado.");
+        setIsLoading(false);
+        return;
+      }
+
+      const from = format(dateRange.start, "yyyy-MM-dd");
+      const to = format(dateRange.end, "yyyy-MM-dd");
+
+      try {
+        // Resume --------------------------------------------------------------
+        const resumeResponse = await fetch(
+          `https://road-cash.onrender.com/entries/resume?userId=${userId}&type=week&from=${from}&to=${to}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!resumeResponse.ok) throw new Error("Erro ao buscar resumo.");
+        const resume = await resumeResponse.json();
+        setResumeData(resume);
+
+        // Maintenance ---------------------------------------------------------
+        const maintenanceResponse = await fetch(
+          `https://road-cash.onrender.com/maintenance-expense?userId=${userId}&from=${from}&to=${to}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!maintenanceResponse.ok) throw new Error("Erro ao buscar manutenção.");
+        const maintenance = await maintenanceResponse.json();
+        setMaintenanceFuelData(maintenance);
+
+        // Personal ------------------------------------------------------------
+        const personalResponse = await fetch(
+          `https://road-cash.onrender.com/personal-maintenance-expense?userId=${userId}&from=${from}&to=${to}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!personalResponse.ok) throw new Error("Erro ao buscar despesas pessoais.");
+        const personal = await personalResponse.json();
+        setPersonalExpenseData(personal);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro desconhecido.");
+        setResumeData(null);
         setMaintenanceFuelData(null);
         setPersonalExpenseData(null);
-        setError(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-        const userId = localStorage.getItem('userId');
-        const token = localStorage.getItem('token');
-        if (!userId || !token) {
-          setError("Usuário não autenticado.");
-          setIsLoading(false);
-          return;
-        }
-
-        const from = format(dateRange.start, "yyyy-MM-dd");
-        const to = format(dateRange.end, "yyyy-MM-dd");
-
-        try {
-          // Fetch resume
-          const resumeResponse = await fetch(
-            `https://road-cash.onrender.com/entries/resume?userId=${userId}&type=week&from=${from}&to=${to}`,
-            { headers: { 'Authorization': `Bearer ${token}` } }
-          );
-          if (!resumeResponse.ok) throw new Error("Erro ao buscar resumo.");
-          const resume = await resumeResponse.json();
-          setResumeData(resume);
-
-          // Fetch maintenance
-          const maintenanceResponse = await fetch(
-            `https://road-cash.onrender.com/maintenance-expense?userId=${userId}&from=${from}&to=${to}`,
-            { headers: { 'Authorization': `Bearer ${token}` } }
-          );
-          if (!maintenanceResponse.ok) throw new Error("Erro ao buscar manutenção.");
-          const maintenance = await maintenanceResponse.json();
-          setMaintenanceFuelData(maintenance);
-
-          // Fetch personal
-          const personalResponse = await fetch(
-            `https://road-cash.onrender.com/personal-maintenance-expense?userId=${userId}&from=${from}&to=${to}`,
-            { headers: { 'Authorization': `Bearer ${token}` } }
-          );
-          if (!personalResponse.ok) throw new Error("Erro ao buscar despesas pessoais.");
-          const personal = await personalResponse.json();
-          setPersonalExpenseData(personal);
-          personalExpenseData && console.log(personalExpenseData);
-
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Erro desconhecido.");
-          setResumeData(null);
-          setMaintenanceFuelData(null);
-          setPersonalExpenseData(null);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      fetchData();
-    }
+    fetchData();
   }, [dateRange]);
-
 
   return (
     <div className="space-y-6">
+      {/* Week Selector --------------------------------------------------------*/}
       <div className="flex flex-col md:flex-row justify-end items-end md:items-center gap-4">
         <WeekSelector onWeekChange={handleWeekChange} />
       </div>
 
-      {error && <Card className="bg-destructive/10 text-destructive border-destructive/20 p-4"><CardContent className="flex items-center gap-2 pt-6"><AlertCircle className="h-5 w-5" />{error}</CardContent></Card>}
-
-      <section className="grid gap-4 md:grid-cols-3">
-        <StatCard title="Ganho Líquido" value={resumeData?.liquidGain ?? 0} icon={TrendingUp} isLoading={isLoading} currency />
-        <StatCard title="Despesas" value={resumeData?.totalSpent ?? 0} icon={TrendingDown} isLoading={isLoading} currency />
-
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Despesas de Manutenção e Combustível</CardTitle>
-            <Wrench className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-3/4" /> : (
-              <div className={`text-2xl font-bold ${((maintenanceFuelData?.oleo ?? 0) + (maintenanceFuelData?.relacao ?? 0) + (maintenanceFuelData?.pneuDianteiro ?? 0) + (maintenanceFuelData?.pneuTraseiro ?? 0) + (maintenanceFuelData?.gasolina ?? 0)) > 0 ? 'text-red-600 dark:text-red-300' : ''
-                }`}>R$ {((maintenanceFuelData?.oleo ?? 0) + (maintenanceFuelData?.relacao ?? 0) + (maintenanceFuelData?.pneuDianteiro ?? 0) + (maintenanceFuelData?.pneuTraseiro ?? 0) + (maintenanceFuelData?.gasolina ?? 0)).toFixed(2).replace('.', ',')}</div>
-            )}
+      {/* Error message ---------------------------------------------------------*/}
+      {error && (
+        <Card className="bg-destructive/10 text-destructive border-destructive/20 p-4">
+          <CardContent className="flex items-center gap-2 pt-6">
+            <AlertCircle className="h-5 w-5" />
+            {error}
           </CardContent>
         </Card>
-        <StatCard title="Distância" value={parseFloat((resumeData?.totalDistance ?? 0).toFixed(1))} icon={Milestone} isLoading={isLoading} unit="km" />
+      )}
+
+      {/* High-level summary ----------------------------------------------------*/}
+      <section className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          title="Ganho Líquido"
+          value={resumeData?.liquidGain ?? 0}
+          icon={TrendingUp}
+          isLoading={isLoading}
+          currency
+        />
+        <StatCard
+          title="Despesas"
+          value={resumeData?.totalSpent ?? 0}
+          icon={TrendingDown}
+          isLoading={isLoading}
+          currency
+        />
+
+        {/* Distância stays in the top summary row */}
+        <StatCard
+          title="Distância"
+          value={parseFloat((resumeData?.totalDistance ?? 0).toFixed(1))}
+          icon={Milestone}
+          isLoading={isLoading}
+          unit="km"
+        />
       </section>
 
+      {/* Detalhes Financeiros --------------------------------------------------*/}
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">Detalhes Financeiros</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard title="Ganho (Bruto)" value={resumeData?.grossGain ?? 0} icon={TrendingUp} isLoading={isLoading} currency />
-          <StatCard title="Gasto com Alimentação" value={resumeData?.foodExpense ?? 0} icon={Utensils} isLoading={isLoading} currency />
-          <StatCard title="Outros Gastos" value={resumeData?.otherExpense ?? 0} icon={ShoppingCart} isLoading={isLoading} currency />
-          <StatCard title="Gasto com gasolina" value={resumeData?.gasolineExpense ?? 0} icon={ShoppingCart} isLoading={isLoading} currency />
+          <StatCard
+            title="Ganho (Bruto)"
+            value={resumeData?.grossGain ?? 0}
+            icon={TrendingUp}
+            isLoading={isLoading}
+            currency
+          />
+          <StatCard
+            title="Gasto com Alimentação"
+            value={resumeData?.foodExpense ?? 0}
+            icon={Utensils}
+            isLoading={isLoading}
+            currency
+          />
+          <StatCard
+            title="Outros Gastos"
+            value={resumeData?.otherExpense ?? 0}
+            icon={ShoppingCart}
+            isLoading={isLoading}
+            currency
+          />
+          <StatCard
+            title="Despesas de Manutenção e Combustível"
+            value={maintenanceFuelTotal}
+            icon={Wrench}
+            isLoading={isLoading}
+            currency
+          />
+          <StatCard
+            title="Gasto com gasolina"
+            value={resumeData?.gasolineExpense ?? 0}
+            icon={ShoppingCart}
+            isLoading={isLoading}
+            currency
+          />
+          {/* New: Despesas de Manutenção e Combustível integrated & styled */}
         </CardContent>
       </Card>
 
+      {/* Detalhes de Manutenção e Combustível (Tabulado por Trabalho/Pessoal) */}
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="text-sm font-medium">Detalhes de Manutenção e Combustível</CardTitle>
@@ -190,11 +310,12 @@ export default function DashboardPage() {
               <TabsTrigger value="pessoal">Pessoal</TabsTrigger>
             </TabsList>
 
-            {/* ABA TRABALHO */}
+            {/* ABA TRABALHO ---------------------------------------------------*/}
             <TabsContent value="trabalho">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
                 {isLoading ? (
                   <>
+                    <Skeleton className="h-8 w-full" />
                     <Skeleton className="h-8 w-full" />
                     <Skeleton className="h-8 w-full" />
                     <Skeleton className="h-8 w-full" />
@@ -205,44 +326,78 @@ export default function DashboardPage() {
                   <>
                     <div>
                       <div className="text-xs text-muted-foreground">Óleo</div>
-                      <div className={`text-lg font-bold ${(maintenanceFuelData?.oleo ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
-                        }`}>R$ {(maintenanceFuelData?.oleo ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div
+                        className={`text-lg font-bold ${(maintenanceFuelData?.oleo ?? 0) > 0
+                            ? "text-red-600 dark:text-red-300"
+                            : ""
+                          }`}
+                      >
+                        {formatCurrency(maintenanceFuelData?.oleo ?? 0)}
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Relação</div>
-                      <div className={`text-lg font-bold ${(maintenanceFuelData?.relacao ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
-                        }`}>R$ {(maintenanceFuelData?.relacao ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div
+                        className={`text-lg font-bold ${(maintenanceFuelData?.relacao ?? 0) > 0
+                            ? "text-red-600 dark:text-red-300"
+                            : ""
+                          }`}
+                      >
+                        {formatCurrency(maintenanceFuelData?.relacao ?? 0)}
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Pneu Dianteiro</div>
-                      <div className={`text-lg font-bold ${(maintenanceFuelData?.pneuDianteiro ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
-                        }`}>R$ {(maintenanceFuelData?.pneuDianteiro ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div
+                        className={`text-lg font-bold ${(maintenanceFuelData?.pneuDianteiro ?? 0) > 0
+                            ? "text-red-600 dark:text-red-300"
+                            : ""
+                          }`}
+                      >
+                        {formatCurrency(maintenanceFuelData?.pneuDianteiro ?? 0)}
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Pneu Traseiro</div>
-                      <div className={`text-lg font-bold ${(maintenanceFuelData?.pneuTraseiro ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
-                        }`}>R$ {(maintenanceFuelData?.pneuTraseiro ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div
+                        className={`text-lg font-bold ${(maintenanceFuelData?.pneuTraseiro ?? 0) > 0
+                            ? "text-red-600 dark:text-red-300"
+                            : ""
+                          }`}
+                      >
+                        {formatCurrency(maintenanceFuelData?.pneuTraseiro ?? 0)}
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Gasolina</div>
-                      <div className={`text-lg font-bold ${(maintenanceFuelData?.gasolina ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
-                        }`}>R$ {(maintenanceFuelData?.gasolina ?? 0).toFixed(2).replace('.', ',')}</div>
-                    </div><div>
+                      <div
+                        className={`text-lg font-bold ${(maintenanceFuelData?.gasolina ?? 0) > 0
+                            ? "text-red-600 dark:text-red-300"
+                            : ""
+                          }`}
+                      >
+                        {formatCurrency(maintenanceFuelData?.gasolina ?? 0)}
+                      </div>
+                    </div>
+                    <div>
                       <div className="text-xs text-muted-foreground">Distância</div>
-                      <div className="text-lg font-bold">{(maintenanceFuelData?.totalDistance ?? 0).toFixed(1).replace('.', ',')} km</div>
+                      <div className="text-lg font-bold">
+                        {(maintenanceFuelData?.totalDistance ?? 0)
+                          .toFixed(1)
+                          .replace('.', ',')} km
+                      </div>
                     </div>
                   </>
                 )}
               </div>
             </TabsContent>
 
-
-
-            {/* ABA PESSOAL */}
+            {/* ABA PESSOAL ----------------------------------------------------*/}
             <TabsContent value="pessoal">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
                 {isLoading ? (
                   <>
+                    <Skeleton className="h-8 w-full" />
                     <Skeleton className="h-8 w-full" />
                     <Skeleton className="h-8 w-full" />
                     <Skeleton className="h-8 w-full" />
@@ -253,32 +408,66 @@ export default function DashboardPage() {
                   <>
                     <div>
                       <div className="text-xs text-muted-foreground">Óleo</div>
-                      <div className={`text-lg font-bold ${(personalExpenseData?.oleo ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
-                        }`}>R$ {(personalExpenseData?.oleo ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div
+                        className={`text-lg font-bold ${(personalExpenseData?.oleo ?? 0) > 0
+                            ? "text-red-600 dark:text-red-300"
+                            : ""
+                          }`}
+                      >
+                        {formatCurrency(personalExpenseData?.oleo ?? 0)}
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Relação</div>
-                      <div className={`text-lg font-bold ${(personalExpenseData?.relacao ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
-                        }`}>R$ {(personalExpenseData?.relacao ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div
+                        className={`text-lg font-bold ${(personalExpenseData?.relacao ?? 0) > 0
+                            ? "text-red-600 dark:text-red-300"
+                            : ""
+                          }`}
+                      >
+                        {formatCurrency(personalExpenseData?.relacao ?? 0)}
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Pneu Dianteiro</div>
-                      <div className={`text-lg font-bold ${(personalExpenseData?.pneuDianteiro ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
-                        }`}>R$ {(personalExpenseData?.pneuDianteiro ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div
+                        className={`text-lg font-bold ${(personalExpenseData?.pneuDianteiro ?? 0) > 0
+                            ? "text-red-600 dark:text-red-300"
+                            : ""
+                          }`}
+                      >
+                        {formatCurrency(personalExpenseData?.pneuDianteiro ?? 0)}
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Pneu Traseiro</div>
-                      <div className={`text-lg font-bold ${(personalExpenseData?.pneuTraseiro ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
-                        }`}>R$ {(personalExpenseData?.pneuTraseiro ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div
+                        className={`text-lg font-bold ${(personalExpenseData?.pneuTraseiro ?? 0) > 0
+                            ? "text-red-600 dark:text-red-300"
+                            : ""
+                          }`}
+                      >
+                        {formatCurrency(personalExpenseData?.pneuTraseiro ?? 0)}
+                      </div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Gasolina</div>
-                      <div className={`text-lg font-bold ${(personalExpenseData?.gasolina ?? 0) > 0 ? 'text-red-600 dark:text-red-300' : ''
-                        }`}>R$ {(personalExpenseData?.gasolina ?? 0).toFixed(2).replace('.', ',')}</div>
+                      <div
+                        className={`text-lg font-bold ${(personalExpenseData?.gasolina ?? 0) > 0
+                            ? "text-red-600 dark:text-red-300"
+                            : ""
+                          }`}
+                      >
+                        {formatCurrency(personalExpenseData?.gasolina ?? 0)}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">Gasolina</div>
-                      <div className="text-lg font-bold">{(personalExpenseData?.totalDistance ?? 0).toFixed(1).replace('.', ',')} km</div>
+                      <div className="text-xs text-muted-foreground">Distância</div>
+                      <div className="text-lg font-bold">
+                        {(personalExpenseData?.totalDistance ?? 0)
+                          .toFixed(1)
+                          .replace('.', ',')} km
+                      </div>
                     </div>
                   </>
                 )}
