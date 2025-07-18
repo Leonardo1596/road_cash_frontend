@@ -13,6 +13,7 @@ import {
   ShoppingCart,
   Fuel,
   Wrench,
+  Clock,
   GitCommitHorizontal,
   Footprints,
   AlertCircle,
@@ -29,6 +30,7 @@ interface ResumeData {
   foodExpense: number;
   otherExpense: number;
   gasolineExpense: number;
+  timeWorked: string;
   maintenance: {
     oleo: number;
     relacao: number;
@@ -177,6 +179,7 @@ export default function DashboardPage() {
         );
         if (!resumeResponse.ok) throw new Error("Erro ao buscar resumo.");
         const resume = await resumeResponse.json();
+        console.log(resume);
         setResumeData(resume);
 
         // Maintenance ---------------------------------------------------------
@@ -250,6 +253,13 @@ export default function DashboardPage() {
           icon={Milestone}
           isLoading={isLoading}
           unit="km"
+        />
+        <StatCard
+          title="Tempo Trabalhado"
+          value={resumeData?.timeWorked}
+          icon={Clock}
+          isLoading={isLoading}
+          unit="horas"
         />
       </section>
 
@@ -328,8 +338,8 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Óleo</div>
                       <div
                         className={`text-lg font-bold ${(maintenanceFuelData?.oleo ?? 0) > 0
-                            ? "text-red-600 dark:text-red-300"
-                            : ""
+                          ? "text-red-600 dark:text-red-300"
+                          : ""
                           }`}
                       >
                         {formatCurrency(maintenanceFuelData?.oleo ?? 0)}
@@ -339,8 +349,8 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Relação</div>
                       <div
                         className={`text-lg font-bold ${(maintenanceFuelData?.relacao ?? 0) > 0
-                            ? "text-red-600 dark:text-red-300"
-                            : ""
+                          ? "text-red-600 dark:text-red-300"
+                          : ""
                           }`}
                       >
                         {formatCurrency(maintenanceFuelData?.relacao ?? 0)}
@@ -350,8 +360,8 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Pneu Dianteiro</div>
                       <div
                         className={`text-lg font-bold ${(maintenanceFuelData?.pneuDianteiro ?? 0) > 0
-                            ? "text-red-600 dark:text-red-300"
-                            : ""
+                          ? "text-red-600 dark:text-red-300"
+                          : ""
                           }`}
                       >
                         {formatCurrency(maintenanceFuelData?.pneuDianteiro ?? 0)}
@@ -361,8 +371,8 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Pneu Traseiro</div>
                       <div
                         className={`text-lg font-bold ${(maintenanceFuelData?.pneuTraseiro ?? 0) > 0
-                            ? "text-red-600 dark:text-red-300"
-                            : ""
+                          ? "text-red-600 dark:text-red-300"
+                          : ""
                           }`}
                       >
                         {formatCurrency(maintenanceFuelData?.pneuTraseiro ?? 0)}
@@ -372,8 +382,8 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Gasolina</div>
                       <div
                         className={`text-lg font-bold ${(maintenanceFuelData?.gasolina ?? 0) > 0
-                            ? "text-red-600 dark:text-red-300"
-                            : ""
+                          ? "text-red-600 dark:text-red-300"
+                          : ""
                           }`}
                       >
                         {formatCurrency(maintenanceFuelData?.gasolina ?? 0)}
@@ -410,8 +420,8 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Óleo</div>
                       <div
                         className={`text-lg font-bold ${(personalExpenseData?.oleo ?? 0) > 0
-                            ? "text-red-600 dark:text-red-300"
-                            : ""
+                          ? "text-red-600 dark:text-red-300"
+                          : ""
                           }`}
                       >
                         {formatCurrency(personalExpenseData?.oleo ?? 0)}
@@ -421,8 +431,8 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Relação</div>
                       <div
                         className={`text-lg font-bold ${(personalExpenseData?.relacao ?? 0) > 0
-                            ? "text-red-600 dark:text-red-300"
-                            : ""
+                          ? "text-red-600 dark:text-red-300"
+                          : ""
                           }`}
                       >
                         {formatCurrency(personalExpenseData?.relacao ?? 0)}
@@ -432,8 +442,8 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Pneu Dianteiro</div>
                       <div
                         className={`text-lg font-bold ${(personalExpenseData?.pneuDianteiro ?? 0) > 0
-                            ? "text-red-600 dark:text-red-300"
-                            : ""
+                          ? "text-red-600 dark:text-red-300"
+                          : ""
                           }`}
                       >
                         {formatCurrency(personalExpenseData?.pneuDianteiro ?? 0)}
@@ -443,8 +453,8 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Pneu Traseiro</div>
                       <div
                         className={`text-lg font-bold ${(personalExpenseData?.pneuTraseiro ?? 0) > 0
-                            ? "text-red-600 dark:text-red-300"
-                            : ""
+                          ? "text-red-600 dark:text-red-300"
+                          : ""
                           }`}
                       >
                         {formatCurrency(personalExpenseData?.pneuTraseiro ?? 0)}
@@ -454,8 +464,8 @@ export default function DashboardPage() {
                       <div className="text-xs text-muted-foreground">Gasolina</div>
                       <div
                         className={`text-lg font-bold ${(personalExpenseData?.gasolina ?? 0) > 0
-                            ? "text-red-600 dark:text-red-300"
-                            : ""
+                          ? "text-red-600 dark:text-red-300"
+                          : ""
                           }`}
                       >
                         {formatCurrency(personalExpenseData?.gasolina ?? 0)}
