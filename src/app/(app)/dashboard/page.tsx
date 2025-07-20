@@ -504,7 +504,7 @@ export default function DashboardPage() {
                     <Skeleton className="h-8 w-full" />
                   </>
                 ) : (
-                  <>"
+                  <>
                     <div>
                       <div className="text-xs text-muted-foreground">Óleo</div>
                       <div
