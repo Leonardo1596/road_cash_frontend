@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WeekSelector } from "../components/WeekSelector";
-import { format } from "date-fns";
+import { format, getDay, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
   Loader2,
   TrendingUp,
@@ -21,6 +22,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import type { LucideIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
 
 interface ResumeData {
   liquidGain: number;
@@ -49,10 +53,30 @@ interface MaintenanceFuelData {
   totalDistance: number;
 }
 
+interface DailyGrossGainData {
+  date: string; // Keep the date string here
+  day: string; // Keep the day name for X-axis
+  grossGain: number;
+}
+
+interface Entry {
+  date: string;
+  grossGain: number;
+  // Include other properties of an entry if needed for other calculations
+}
+
 /** ------------------------------------------------------------------
  * Utility helpers
  * -----------------------------------------------------------------*/
 const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
+
+const getDayName = (dateString: string) => {
+  const date = parseISO(dateString);
+  const dayOfWeek = getDay(date);
+  const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  return dayNames[dayOfWeek];
+};
+
 
 /** Class name helper that decides the bg + icon tint based on title.
  *  NOTE: This is intentionally string-based because the calling sites
@@ -132,9 +156,10 @@ const StatCard = ({
 
 export default function DashboardPage() {
   const [resumeData, setResumeData] = useState<ResumeData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [maintenanceFuelData, setMaintenanceFuelData] = useState<MaintenanceFuelData | null>(null);
   const [personalExpenseData, setPersonalExpenseData] = useState<MaintenanceFuelData | null>(null);
+  const [dailyGrossGainData, setDailyGrossGainData] = useState<DailyGrossGainData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -158,6 +183,7 @@ export default function DashboardPage() {
       setIsLoading(true);
       setMaintenanceFuelData(null);
       setPersonalExpenseData(null);
+      setDailyGrossGainData([]);
       setError(null);
 
       const userId = localStorage.getItem("userId");
@@ -172,14 +198,42 @@ export default function DashboardPage() {
       const to = format(dateRange.end, "yyyy-MM-dd");
 
       try {
-        // Resume --------------------------------------------------------------
+        // Fetch all entries ---------------------------------------------------
+        const entriesResponse = await fetch(
+          `https://road-cash.onrender.com/get/entries?userId=${userId}&from=${from}&to=${to}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!entriesResponse.ok) throw new Error("Erro ao buscar lançamentos.");
+        const entries: Entry[] = await entriesResponse.json();
+
+        // Calculate daily gross gain and format date to day name --------------
+        const dailyDataMap = new Map<string, { grossGain: number; date: string }>();
+        entries.forEach(entry => {
+          // Format date to yyyy-MM-dd to ensure correct daily aggregation
+          const date = format(parseISO(entry.date), 'yyyy-MM-dd');
+           if (dailyDataMap.has(date)) {
+            dailyDataMap.get(date)!.grossGain += entry.grossGain;
+          } else {
+            dailyDataMap.set(date, { grossGain: entry.grossGain, date: entry.date });
+          }
+        });
+
+        // Convert map to array for the chart, format date to day name and sort by date
+        const dailyGrossGainArray = Array.from(dailyDataMap.entries()).map(([date, data]) => ({
+          day: getDayName(date),
+          date: data.date, // Include the date here
+          grossGain: data.grossGain
+        })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // Sorting by date
+
+        setDailyGrossGainData(dailyGrossGainArray);
+
+        // Resume (can potentially be calculated from entries too if needed) -------
         const resumeResponse = await fetch(
           `https://road-cash.onrender.com/entries/resume?userId=${userId}&type=week&from=${from}&to=${to}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!resumeResponse.ok) throw new Error("Erro ao buscar resumo.");
         const resume = await resumeResponse.json();
-        console.log(resume);
         setResumeData(resume);
 
         // Maintenance ---------------------------------------------------------
@@ -199,11 +253,13 @@ export default function DashboardPage() {
         if (!personalResponse.ok) throw new Error("Erro ao buscar despesas pessoais.");
         const personal = await personalResponse.json();
         setPersonalExpenseData(personal);
+
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro desconhecido.");
         setResumeData(null);
         setMaintenanceFuelData(null);
         setPersonalExpenseData(null);
+        setDailyGrossGainData([]);
       } finally {
         setIsLoading(false);
       }
@@ -262,6 +318,39 @@ export default function DashboardPage() {
           unit="horas"
         />
       </section>
+
+      {/* Daily Gross Gain Chart ------------------------------------------------*/}
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline">Ganho Bruto Diário</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={dailyGrossGainData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis />
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  labelFormatter={(label: string, payload: any[]) => {
+                    if (payload && payload.length > 0) {
+                      const data = payload[0].payload;
+                      return format(parseISO(data.date), "dd/MM/yyyy");
+                    }
+                    return label;
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="grossGain" fill="#8884d8" name="Ganho Bruto" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
 
       {/* Detalhes Financeiros --------------------------------------------------*/}
       <Card>
@@ -415,7 +504,7 @@ export default function DashboardPage() {
                     <Skeleton className="h-8 w-full" />
                   </>
                 ) : (
-                  <>
+                  <>"
                     <div>
                       <div className="text-xs text-muted-foreground">Óleo</div>
                       <div
