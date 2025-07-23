@@ -39,13 +39,13 @@ interface Entry {
   spent: number;
   percentageSpent?: number;
   costPerKm?: number;
-  gasolinePrice?: number;      
+  gasolinePrice?: number;
   timeWorked?: number;
   gasolineExpense?: number;
 }
 
 export default function LancamentosPage() {
-  const [entries, setEntries] = useState<Entry[]>([]);
+  const [records, setRecords] = useState<Entry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +72,7 @@ export default function LancamentosPage() {
 
       const from = format(start, "yyyy-MM-dd");
       const to = format(end, "yyyy-MM-dd");
-      const baseRoute = activeTab === "trabalho" ? "get/entries" : "get/personal-entries";
+      const baseRoute = activeTab === "trabalho" ? "get/records" : "get/personal-entries";
       const url = `https://road-cash.onrender.com/${baseRoute}?userId=${userId}&from=${from}&to=${to}`;
 
       try {
@@ -81,10 +81,10 @@ export default function LancamentosPage() {
         });
         if (!response.ok) throw new Error("Falha ao buscar lançamentos.");
         const data = await response.json();
-        setEntries(Array.isArray(data) ? data : []);
+        setRecords(Array.isArray(data) ? data : []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Ocorreu um erro desconhecido.");
-        setEntries([]);
+        setRecords([]);
       } finally {
         setIsLoading(false);
       }
@@ -241,73 +241,77 @@ export default function LancamentosPage() {
                       <AlertCircle className="inline-block mr-2 h-5 w-5" /> {error}
                     </TableCell>
                   </TableRow>
-                ) : entries.length === 0 ? (
+                ) : records.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center">Nenhum lançamento encontrado.</TableCell>
                   </TableRow>
                 ) : (
-                  entries.map(entry => (
-                    <TableRow key={entry._id}>
-                      <TableCell>{entry.weekDay}</TableCell>
-                      <TableCell>{format(parseISO(entry.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
-                      <TableCell>{entry.distance.toFixed(1)} km</TableCell>
-                      {activeTab === "trabalho" ? (
-                        <>
-                          <TableCell className={
-                            (entry.grossGain || 0) > 0
-                              ? "text-green-600"
-                              : (entry.grossGain || 0) < 0
-                                ? "text-red-600"
-                                : "text-muted-foreground"
-                          }>R$ {(entry.grossGain || 0).toFixed(2).replace(".", ",")}</TableCell>
-                          <TableCell className={
-                            (entry.liquidGain || 0) > 0
-                              ? "text-green-600"
-                              : (entry.liquidGain || 0) < 0
-                                ? "text-red-600"
-                                : "text-muted-foreground"
-                          }>R$ {(entry.liquidGain || 0).toFixed(2).replace(".", ",")}</TableCell>
-                          <TableCell className={(entry.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"}>R$ {(entry.spent || 0).toFixed(2).replace(".", ",")}</TableCell>
-                          <TableCell>{(entry.percentageSpent || 0).toFixed(2).replace(".", ",")}%</TableCell>
-                          <TableCell>{formatMinutesToHours(entry.timeWorked ?? 0)}</TableCell>
-                        </>
-                      ) : (
-                        <>
-                          <TableCell>R$ {(entry.spent || 0).toFixed(2).replace(".", ",")}</TableCell>
-                          <TableCell>R$ {(entry.costPerKm || 0).toFixed(2).replace(".", ",")}</TableCell>
-                          <TableCell>R$ {(entry.gasolinePrice || 0).toFixed(2).replace(".", ",")}</TableCell>
-                          <TableCell className={(entry.gasolineExpense || 0) > 0 ? "text-red-600" : "text-muted-foreground"}>
-                            R$ {(entry.gasolineExpense || 0).toFixed(2).replace(".", ",")}</TableCell>
-                        </>
-                      )}
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {activeTab === "trabalho" && (
-                              <DropdownMenuItem onSelect={() => handleEditClick(entry)}>
-                                <Edit className="mr-2 h-4 w-4" /> Editar
+                  records.map(entry => (
+                    entry.type === "entry" ? (
+
+                      <TableRow key={entry._id}>
+                        <TableCell>{entry.weekDay}</TableCell>
+                        <TableCell>{format(parseISO(entry.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                        <TableCell>{entry.distance.toFixed(1)} km</TableCell>
+                        {activeTab === "trabalho" ? (
+                          <>
+                            <TableCell className={
+                              (entry.grossGain || 0) > 0
+                                ? "text-green-600"
+                                : (entry.grossGain || 0) < 0
+                                  ? "text-red-600"
+                                  : "text-muted-foreground"
+                            }>R$ {(entry.grossGain || 0).toFixed(2).replace(".", ",")}</TableCell>
+                            <TableCell className={
+                              (entry.liquidGain || 0) > 0
+                                ? "text-green-600"
+                                : (entry.liquidGain || 0) < 0
+                                  ? "text-red-600"
+                                  : "text-muted-foreground"
+                            }>R$ {(entry.liquidGain || 0).toFixed(2).replace(".", ",")}</TableCell>
+                            <TableCell className={(entry.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"}>R$ {(entry.spent || 0).toFixed(2).replace(".", ",")}</TableCell>
+                            <TableCell>{(entry.percentageSpent || 0).toFixed(2).replace(".", ",")}%</TableCell>
+                            <TableCell>{formatMinutesToHours(entry.timeWorked ?? 0)}</TableCell>
+                          </>
+                        ) : (
+                          <>
+                            <TableCell>R$ {(entry.spent || 0).toFixed(2).replace(".", ",")}</TableCell>
+                            <TableCell>R$ {(entry.costPerKm || 0).toFixed(2).replace(".", ",")}</TableCell>
+                            <TableCell>R$ {(entry.gasolinePrice || 0).toFixed(2).replace(".", ",")}</TableCell>
+                            <TableCell className={(entry.gasolineExpense || 0) > 0 ? "text-red-600" : "text-muted-foreground"}>
+                              R$ {(entry.gasolineExpense || 0).toFixed(2).replace(".", ",")}</TableCell>
+                          </>
+                        )}
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {activeTab === "trabalho" && (
+                                <DropdownMenuItem onSelect={() => handleEditClick(entry)}>
+                                  <Edit className="mr-2 h-4 w-4" /> Editar
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onSelect={() => handleDeleteClick(entry._id)} className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" /> Deletar
                               </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onSelect={() => handleDeleteClick(entry._id)} className="text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" /> Deletar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ) : null
+                  )
                   ))
-                )}
+                }
               </TableBody>
             </Table>
           </div>
 
           {/* Cards mobile */}
-          <div className="sm:hidden space-y-4">
+          {/* <div className="sm:hidden space-y-4">
             {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <Card key={i} className="p-4 space-y-2">
@@ -320,10 +324,10 @@ export default function LancamentosPage() {
               <div className="text-center text-destructive flex items-center justify-center gap-2">
                 <AlertCircle className="h-5 w-5" /> {error}
               </div>
-            ) : entries.length === 0 ? (
+            ) : records.length === 0 ? (
               <div className="text-center text-muted-foreground">Nenhum lançamento encontrado.</div>
             ) : (
-              entries.map((entry) => (
+              records.map((entry) => (
                 <Card key={entry._id}>
                   <CardContent className="p-4 space-y-1">
                     <div className="text-sm font-medium text-muted-foreground">
@@ -376,7 +380,7 @@ export default function LancamentosPage() {
                 </Card>
               ))
             )}
-          </div>
+          </div> */}
         </CardContent>
       </Card>
 

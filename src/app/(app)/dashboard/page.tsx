@@ -200,7 +200,7 @@ export default function DashboardPage() {
       try {
         // Fetch all entries ---------------------------------------------------
         const entriesResponse = await fetch(
-          `https://road-cash.onrender.com/get/entries?userId=${userId}&from=${from}&to=${to}`,
+          `https://road-cash.onrender.com/get/records?userId=${userId}&from=${from}&to=${to}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!entriesResponse.ok) throw new Error("Erro ao buscar lançamentos.");
@@ -229,7 +229,7 @@ export default function DashboardPage() {
 
         // Resume (can potentially be calculated from entries too if needed) -------
         const resumeResponse = await fetch(
-          `https://road-cash.onrender.com/entries/resume?userId=${userId}&type=week&from=${from}&to=${to}`,
+          `https://road-cash.onrender.com/records/resume?userId=${userId}&type=week&from=${from}&to=${to}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!resumeResponse.ok) throw new Error("Erro ao buscar resumo.");
