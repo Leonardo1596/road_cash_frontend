@@ -44,18 +44,29 @@ interface Entry {
   gasolineExpense?: number;
 }
 
+interface Expense {
+  _id: string;
+  weekDay: string;
+  date: string;
+  description: string;
+  category: string;
+  price: number;
+}
+
+type RecordType = Entry | Expense;
+
 export default function LancamentosPage() {
-  const [records, setRecords] = useState<Entry[]>([]);
+  const [records, setRecords] = useState<RecordType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedEntry, setSelectedEntry] = useState<Entry | undefined>(undefined);
+  const [selectedEntry, setSelectedEntry] = useState<RecordType | undefined>(undefined);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"trabalho" | "pessoal">("trabalho");
+  const [activeTab, setActiveTab] = useState<'trabalho' | 'pessoal' | 'despesas'>('trabalho');
 
   const fetchEntries = useCallback(
     async (start: Date, end: Date) => {
@@ -72,7 +83,14 @@ export default function LancamentosPage() {
 
       const from = format(start, "yyyy-MM-dd");
       const to = format(end, "yyyy-MM-dd");
-      const baseRoute = activeTab === "trabalho" ? "get/records" : "get/personal-entries";
+      let baseRoute = '';
+      if (activeTab === 'trabalho') {
+        baseRoute = 'get/records';
+      } else if (activeTab === 'pessoal') {
+        baseRoute = 'get/personal-entries';
+      } else if (activeTab === 'despesas') {
+        baseRoute = 'get/expenses';
+      }
       const url = `https://road-cash.onrender.com/${baseRoute}?userId=${userId}&from=${from}&to=${to}`;
 
       try {
@@ -107,7 +125,7 @@ export default function LancamentosPage() {
     setIsFormOpen(true);
   };
 
-  const handleEditClick = (entry: Entry) => {
+  const handleEditClick = (entry: RecordType) => {
     setSelectedEntry(entry);
     setIsFormOpen(true);
   };
@@ -122,10 +140,14 @@ export default function LancamentosPage() {
     const userId = localStorage.getItem("userId");
     const token = localStorage.getItem("token");
 
-    const isPersonal = activeTab === "pessoal";
-    const url = isPersonal
-      ? `https://road-cash.onrender.com/personal-entry/delete/${userId}/${entryToDelete}`
-      : `https://road-cash.onrender.com/entry/delete/${userId}/${entryToDelete}`;
+    let url = '';
+    if (activeTab === 'trabalho') {
+      url = `https://road-cash.onrender.com/entry/delete/${userId}/${entryToDelete}`;
+    } else if (activeTab === 'pessoal') {
+      url = `https://road-cash.onrender.com/personal-entry/delete/${userId}/${entryToDelete}`;
+    } else if (activeTab === 'despesas') {
+      url = `https://road-cash.onrender.com/expense/delete/${userId}/${entryToDelete}`; // Assuming an endpoint for deleting expenses
+    }
 
     try {
       const response = await fetch(url, {
@@ -169,14 +191,11 @@ export default function LancamentosPage() {
   const TableSkeleton = () => (
     [...Array(5)].map((_, i) => (
       <TableRow key={i}>
-        {[...Array(7)].map((__, j) => (
+        {[...Array(activeTab === 'despesas' ? 5 : 8)].map((__, j) => (
           <TableCell key={j}>
             <Skeleton className="h-4 w-20" />
           </TableCell>
         ))}
-        <TableCell>
-          <Skeleton className="h-4 w-10" />
-        </TableCell>
       </TableRow>
     ))
   );
@@ -185,9 +204,10 @@ export default function LancamentosPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex-1">
-          <Tabs defaultValue="trabalho" value={activeTab} onValueChange={(value) => setActiveTab(value as "trabalho" | "pessoal")}>
+          <Tabs defaultValue="trabalho" value={activeTab} onValueChange={(value) => setActiveTab(value as 'trabalho' | 'pessoal' | 'despesas')}>
             <TabsList>
               <TabsTrigger value="trabalho">Trabalho</TabsTrigger>
+              <TabsTrigger value="despesas">Despesas</TabsTrigger>
               <TabsTrigger value="pessoal">Pessoal</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -202,10 +222,18 @@ export default function LancamentosPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Lançamentos</CardTitle>
-          <CardDescription>Visualize e gerencie seus lançamentos.</CardDescription>
-        </CardHeader>
+        {activeTab === 'despesas' ? (
+          <CardHeader>
+            <CardTitle>Histórico de Despesas</CardTitle>
+            <CardDescription>Visualize e gerencie suas despesas.</CardDescription>
+          </CardHeader>
+
+        ) : (
+          <CardHeader>
+            <CardTitle>Histórico de Lançamentos</CardTitle>
+            <CardDescription>Visualize e gerencie seus lançamentos.</CardDescription>
+          </CardHeader>
+        )}
         <CardContent>
           {/* Tabela desktop */}
           <div className="hidden sm:block">
@@ -214,21 +242,31 @@ export default function LancamentosPage() {
                 <TableRow>
                   <TableHead>Dia</TableHead>
                   <TableHead>Data</TableHead>
-                  <TableHead>Distância (km)</TableHead>
-                  {activeTab === "trabalho" ? (
+                  {activeTab === 'despesas' ? (
                     <>
-                      <TableHead>Ganho Bruto</TableHead>
-                      <TableHead>Ganho Líquido</TableHead>
-                      <TableHead>Despesas</TableHead>
-                      <TableHead>Gasto em %</TableHead>
-                      <TableHead>Duração</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Preço</TableHead>
                     </>
                   ) : (
                     <>
-                      <TableHead>Gasto</TableHead>
-                      <TableHead>R$/km</TableHead>
-                      <TableHead>Preço Gasolina</TableHead>
-                      <TableHead>Gasto Gasolina</TableHead>
+                      <TableHead>Distância (km)</TableHead>
+                      {activeTab === "trabalho" ? (
+                        <>
+                          <TableHead>Ganho Bruto</TableHead>
+                          <TableHead>Ganho Líquido</TableHead>
+                          <TableHead>Despesas</TableHead>
+                          <TableHead>Gasto em %</TableHead>
+                          <TableHead>Duração</TableHead>
+                        </>
+                      ) : (
+                        <>
+                          <TableHead>Gasto</TableHead>
+                          <TableHead>R$/km</TableHead>
+                          <TableHead>Preço Gasolina</TableHead>
+                          <TableHead>Gasto Gasolina</TableHead>
+                        </>
+                      )}
                     </>
                   )}
                   <TableHead className="text-right">Ações</TableHead>
@@ -237,75 +275,89 @@ export default function LancamentosPage() {
               <TableBody>
                 {isLoading ? <TableSkeleton /> : error ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-destructive">
+                    <TableCell colSpan={activeTab === 'despesas' ? 5 : 8} className="text-center text-destructive">
                       <AlertCircle className="inline-block mr-2 h-5 w-5" /> {error}
                     </TableCell>
                   </TableRow>
                 ) : records.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center">Nenhum lançamento encontrado.</TableCell>
+                    <TableCell colSpan={activeTab === 'despesas' ? 5 : 8} className="text-center">Nenhum lançamento encontrado.</TableCell>
                   </TableRow>
                 ) : (
-                  records.map(entry => (
-                    entry.type === "entry" ? (
-
-                      <TableRow key={entry._id}>
-                        <TableCell>{entry.weekDay}</TableCell>
-                        <TableCell>{format(parseISO(entry.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
-                        <TableCell>{entry.distance.toFixed(1)} km</TableCell>
-                        {activeTab === "trabalho" ? (
+                  records.map(record => (
+                    <TableRow key={record._id}>
+                      <TableCell>{record.weekDay}</TableCell>
+                      <TableCell>{format(parseISO(record.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                      {activeTab === 'despesas' ? (
+                        record && 'description' in record && 'category' in record && 'price' in record ? (
                           <>
-                            <TableCell className={
-                              (entry.grossGain || 0) > 0
-                                ? "text-green-600"
-                                : (entry.grossGain || 0) < 0
-                                  ? "text-red-600"
-                                  : "text-muted-foreground"
-                            }>R$ {(entry.grossGain || 0).toFixed(2).replace(".", ",")}</TableCell>
-                            <TableCell className={
-                              (entry.liquidGain || 0) > 0
-                                ? "text-green-600"
-                                : (entry.liquidGain || 0) < 0
-                                  ? "text-red-600"
-                                  : "text-muted-foreground"
-                            }>R$ {(entry.liquidGain || 0).toFixed(2).replace(".", ",")}</TableCell>
-                            <TableCell className={(entry.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"}>R$ {(entry.spent || 0).toFixed(2).replace(".", ",")}</TableCell>
-                            <TableCell>{(entry.percentageSpent || 0).toFixed(2).replace(".", ",")}%</TableCell>
-                            <TableCell>{formatMinutesToHours(entry.timeWorked ?? 0)}</TableCell>
+                            <TableCell>{record.description}</TableCell>
+                            <TableCell>{record.category}</TableCell>
+                            <TableCell className="text-red-600">R$ {record.price.toFixed(2).replace(".", ",")}</TableCell>
                           </>
-                        ) : (
+                        ) : <TableCell colSpan={3}>Tipo de registro inesperado para Despesas.</TableCell>
+                      ) : (
+                        record && 'distance' in record ? (
                           <>
-                            <TableCell>R$ {(entry.spent || 0).toFixed(2).replace(".", ",")}</TableCell>
-                            <TableCell>R$ {(entry.costPerKm || 0).toFixed(2).replace(".", ",")}</TableCell>
-                            <TableCell>R$ {(entry.gasolinePrice || 0).toFixed(2).replace(".", ",")}</TableCell>
-                            <TableCell className={(entry.gasolineExpense || 0) > 0 ? "text-red-600" : "text-muted-foreground"}>
-                              R$ {(entry.gasolineExpense || 0).toFixed(2).replace(".", ",")}</TableCell>
+                            <TableCell>{record.distance.toFixed(1)} km</TableCell>
+                            {activeTab === "trabalho" ? (
+                              record && 'grossGain' in record && 'liquidGain' in record && 'spent' in record && 'percentageSpent' in record && 'timeWorked' in record ? (
+                                <>
+                                  <TableCell className={
+                                    (record.grossGain || 0) > 0
+                                      ? "text-green-600"
+                                      : (record.grossGain || 0) < 0
+                                        ? "text-red-600"
+                                        : "text-muted-foreground"
+                                  }>R$ {(record.grossGain || 0).toFixed(2).replace(".", ",")}</TableCell>
+                                  <TableCell className={
+                                    (record.liquidGain || 0) > 0
+                                      ? "text-green-600"
+                                      : (record.liquidGain || 0) < 0
+                                        ? "text-red-600"
+                                        : "text-muted-foreground"
+                                  }>R$ {(record.liquidGain || 0).toFixed(2).replace(".", ",")}</TableCell>
+                                  <TableCell className={(record.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"}>R$ {(record.spent || 0).toFixed(2).replace(".", ",")}</TableCell>
+                                  <TableCell>{(record.percentageSpent || 0).toFixed(2).replace(".", ",")}%</TableCell>
+                                  <TableCell>{formatMinutesToHours(record.timeWorked ?? 0)}</TableCell>
+                                </>
+                              ) : <TableCell colSpan={5}>Tipo de registro inesperado para Trabalho.</TableCell>
+                            ) : (
+                              record && 'spent' in record && 'costPerKm' in record && 'gasolinePrice' in record && 'gasolineExpense' in record ? (
+                                <>
+                                  <TableCell>R$ {(record.spent || 0).toFixed(2).replace(".", ",")}</TableCell>
+                                  <TableCell>R$ {(record.costPerKm || 0).toFixed(2).replace(".", ",")}</TableCell>
+                                  <TableCell>R$ {(record.gasolinePrice || 0).toFixed(2).replace(".", ",")}</TableCell>
+                                  <TableCell className={(record.gasolineExpense || 0) > 0 ? "text-red-600" : "text-muted-foreground"}>
+                                    R$ {(record.gasolineExpense || 0).toFixed(2).replace(".", ",")}</TableCell>
+                                </>
+                              ) : <TableCell colSpan={4}>Tipo de registro inesperado para Pessoal.</TableCell>
+                            )}
                           </>
-                        )}
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {activeTab === "trabalho" && (
-                                <DropdownMenuItem onSelect={() => handleEditClick(entry)}>
-                                  <Edit className="mr-2 h-4 w-4" /> Editar
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem onSelect={() => handleDeleteClick(entry._id)} className="text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" /> Deletar
+                        ) : <TableCell colSpan={6}>Tipo de registro inesperado.</TableCell>
+                      )}
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {activeTab !== "despesas" && (
+                              <DropdownMenuItem onSelect={() => handleEditClick(record)}>
+                                <Edit className="mr-2 h-4 w-4" /> Editar
                               </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ) : null
-                  )
+                            )}
+                            <DropdownMenuItem onSelect={() => handleDeleteClick(record._id)} className="text-destructive">
+                              <Trash2 className="mr-2 h-4 w-4" /> Deletar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
                   ))
-                }
+                )}
               </TableBody>
             </Table>
           </div>
@@ -327,52 +379,71 @@ export default function LancamentosPage() {
             ) : records.length === 0 ? (
               <div className="text-center text-muted-foreground">Nenhum lançamento encontrado.</div>
             ) : (
-              records.map((entry) => (
-                <Card key={entry._id}>
+              records.map((record) => (
+                <Card key={record._id}>
                   <CardContent className="p-4 space-y-1">
                     <div className="text-sm font-medium text-muted-foreground">
-                      {entry.weekDay} - {format(parseISO(entry.date), "dd/MM/yyyy", { locale: ptBR })}
+                      {record.weekDay} - {format(parseISO(record.date), "dd/MM/yyyy", { locale: ptBR })}
                     </div>
-                    <div className="text-sm"><strong>Distância:</strong> {entry.distance.toFixed(1)} km</div>
-
-                    {activeTab === "trabalho" ? (
-                      <>
-                        <div className={`text-sm ${(entry.grossGain || 0) > 0
-                          ? "text-green-600"
-                          : (entry.grossGain || 0) < 0
-                            ? "text-red-600"
-                            : "text-muted-foreground"
-                          }`}><strong>Ganho Bruto:</strong> R$ {entry.grossGain?.toFixed(2).replace(".", ",")}</div>
-                        <div className={`text-sm ${(entry.liquidGain || 0) > 0
-                          ? "text-green-600"
-                          : (entry.liquidGain || 0) < 0
-                            ? "text-red-600"
-                            : "text-muted-foreground"
-                          }`}><strong>Ganho Líquido:</strong> R$ {entry.liquidGain?.toFixed(2).replace(".", ",")}</div>
-                        <div className={`text-sm ${(entry.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"
-                          }`}><strong>Despesas:</strong> R$ {entry.spent?.toFixed(2).replace(".", ",")}</div>
-                        <div className="text-sm"><strong>Gasto em %:</strong> {entry.percentageSpent?.toFixed(2).replace(".", ",")}%</div>
-                        <div className="text-sm"><strong>Duração:</strong> {formatMinutesToHours(entry.timeWorked ?? 0)}</div>
-                      </>
+                    {activeTab === 'despesas' ? (
+                      record && 'description' in record && 'category' in record && 'price' in record ? (
+                        <>
+                          <div className="text-sm"><strong>Descrição:</strong> {record.description}</div>
+                          <div className="text-sm"><strong>Categoria:</strong> {record.category}</div>
+                          <div className="text-sm text-red-600"><strong>Preço:</strong> R$ {record.price.toFixed(2).replace(".", ",")}</div>
+                        </>
+                      ) : <div className="text-sm text-destructive">Tipo de registro inesperado para Despesas.</div>
                     ) : (
-                      <>
-                        <div className={`text-sm ${(entry.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"}`}><strong>Gasto:</strong> R$ {entry.spent?.toFixed(2).replace(".", ",")}</div>
-                        <div className="text-sm"><strong>R$/km:</strong> R$ {entry.costPerKm?.toFixed(2).replace(".", ",")}</div>
-                        <div className="text-sm"><strong>Preço Gasolina:</strong> R$ {entry.gasolinePrice?.toFixed(2).replace(".", ",")}</div>
-                        <div className="text-sm"><strong>Gasto Gasolina:</strong> R$ {entry.gasolineExpense?.toFixed(2).replace(".", ",")}</div>
-                      </>
+                      record && 'distance' in record ? (
+                        <>
+                          <div className="text-sm"><strong>Distância:</strong> {record.distance.toFixed(1)} km</div>
+
+                          {activeTab === "trabalho" ? (
+                            record && 'grossGain' in record && 'liquidGain' in record && 'spent' in record && 'percentageSpent' in record && 'timeWorked' in record ? (
+                              <>
+                                <div className={`text-sm ${(record.grossGain || 0) > 0
+                                  ? "text-green-600"
+                                  : (record.grossGain || 0) < 0
+                                    ? "text-red-600"
+                                    : "text-muted-foreground"
+                                  }`}><strong>Ganho Bruto:</strong> R$ {record.grossGain?.toFixed(2).replace(".", ",")}</div>
+                                <div className={`text-sm ${(record.liquidGain || 0) > 0
+                                  ? "text-green-600"
+                                  : (record.liquidGain || 0) < 0
+                                    ? "text-red-600"
+                                    : "text-muted-foreground"
+                                  }`}><strong>Ganho Líquido:</strong> R$ {record.liquidGain?.toFixed(2).replace(".", ",")}</div>
+                                <div className={`text-sm ${(record.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"
+                                  }`}><strong>Despesas:</strong> R$ {record.spent?.toFixed(2).replace(".", ",")}</div>
+                                <div className="text-sm"><strong>Gasto em %:</strong> {record.percentageSpent?.toFixed(2).replace(".", ",")}%</div>
+                                <div className="text-sm"><strong>Duração:</strong> {formatMinutesToHours(record.timeWorked ?? 0)}</div>
+                              </>
+                            ) : <div className="text-sm text-destructive">Tipo de registro inesperado para Trabalho.</div>
+                          ) : (
+                            record && 'spent' in record && 'costPerKm' in record && 'gasolinePrice' in record && 'gasolineExpense' in record ? (
+                              <>
+                                <div className={`text-sm ${(record.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"}`}><strong>Gasto:</strong> R$ {record.spent?.toFixed(2).replace(".", ",")}</div>
+                                <div className="text-sm"><strong>R$/km:</strong> R$ {record.costPerKm?.toFixed(2).replace(".", ",")}</div>
+                                <div className="text-sm"><strong>Preço Gasolina:</strong> R$ {record.gasolinePrice?.toFixed(2).replace(".", ",")}</div>
+                                <div className="text-sm"><strong>Gasto Gasolina:</strong> R$ {record.gasolineExpense?.toFixed(2).replace(".", ",")}
+                                </div>
+                              </>
+                            ) : <div classNameName="text-sm text-destructive">Tipo de registro inesperado para Pessoal.</div>
+                          )}
+                        </>
+                      ) : <div className="text-sm text-destructive">Tipo de registro inesperado.</div>
                     )}
 
                     <div className="flex justify-end gap-2 pt-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => activeTab === "trabalho" && handleEditClick(entry)}
-                        disabled={activeTab === "pessoal"}
+                        onClick={() => activeTab !== "despesas" && handleEditClick(record)}
+                        disabled={activeTab === "despesas"}
                       >
                         <Edit className="h-4 w-4 mr-1" /> Editar
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(entry._id)} className="text-destructive">
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(record._id)} className="text-destructive">
                         <Trash2 className="h-4 w-4 mr-1" /> Deletar
                       </Button>
                     </div>
