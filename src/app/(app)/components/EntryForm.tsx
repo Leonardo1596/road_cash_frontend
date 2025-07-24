@@ -80,7 +80,7 @@ export function EntryForm({
       setFoodExpense("");
       setOtherExpense("");
       setDistance("");
-      setCategory("food"); // ✅ valor padrão ao criar novo
+      setCategory("alimentacao"); // ✅ valor padrão ao criar novo
       setDescription("");
       setPrice("");
     }
@@ -92,7 +92,6 @@ export function EntryForm({
     e.preventDefault();
     const userId = localStorage.getItem("userId");
     const token = localStorage.getItem("token");
-
 
     if (!userId || !token) {
       toast({
