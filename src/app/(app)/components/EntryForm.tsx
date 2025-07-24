@@ -67,7 +67,7 @@ export function EntryForm({
       setFoodExpense(entry.foodExpense?.toString() || "");
       setOtherExpense(entry.otherExpense?.toString() || "");
       setDistance(entry.distance?.toString() || "");
-      setCategory(entry.category || "food"); // ✅ valor padrão corrigido
+      setCategory(entry.category || "alimentacao"); // ✅ valor padrão corrigido
       setDescription(entry.description || "");
       setPrice(entry.price?.toString() || "");
     } else {
