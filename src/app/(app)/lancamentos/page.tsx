@@ -66,7 +66,7 @@ export default function LancamentosPage() {
   const [selectedEntry, setSelectedEntry] = useState<RecordType | undefined>(undefined);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'trabalho' | 'pessoal' | 'despesas'>('trabalho');
+  const [activeTab, setActiveTab] = useState<'trabalho' | 'pessoal' | 'despesa'>('trabalho');
 
   const fetchEntries = useCallback(
     async (start: Date, end: Date) => {
@@ -85,10 +85,10 @@ export default function LancamentosPage() {
       const to = format(end, "yyyy-MM-dd");
       let baseRoute = '';
       if (activeTab === 'trabalho') {
-        baseRoute = 'get/records';
+        baseRoute = 'get/entries';
       } else if (activeTab === 'pessoal') {
         baseRoute = 'get/personal-entries';
-      } else if (activeTab === 'despesas') {
+      } else if (activeTab === 'despesa') {
         baseRoute = 'get/expenses';
       }
       const url = `https://road-cash.onrender.com/${baseRoute}?userId=${userId}&from=${from}&to=${to}`;
@@ -145,8 +145,8 @@ export default function LancamentosPage() {
       url = `https://road-cash.onrender.com/entry/delete/${userId}/${entryToDelete}`;
     } else if (activeTab === 'pessoal') {
       url = `https://road-cash.onrender.com/personal-entry/delete/${userId}/${entryToDelete}`;
-    } else if (activeTab === 'despesas') {
-      url = `https://road-cash.onrender.com/expense/delete/${userId}/${entryToDelete}`; // Assuming an endpoint for deleting expenses
+    } else if (activeTab === 'despesa') {
+      url = `https://road-cash.onrender.com/entry/delete/${userId}/${entryToDelete}`; // Assuming an endpoint for deleting expenses
     }
 
     try {
@@ -191,7 +191,7 @@ export default function LancamentosPage() {
   const TableSkeleton = () => (
     [...Array(5)].map((_, i) => (
       <TableRow key={i}>
-        {[...Array(activeTab === 'despesas' ? 5 : 8)].map((__, j) => (
+        {[...Array(activeTab === 'despesa' ? 5 : 8)].map((__, j) => (
           <TableCell key={j}>
             <Skeleton className="h-4 w-20" />
           </TableCell>
@@ -200,14 +200,20 @@ export default function LancamentosPage() {
     ))
   );
 
+  function formatCategoryName(category) {
+    if (category === 'alimentacao') return 'Alimentação';
+    if (category === 'manutencao') return 'Manutenção';
+    return category;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex-1">
-          <Tabs defaultValue="trabalho" value={activeTab} onValueChange={(value) => setActiveTab(value as 'trabalho' | 'pessoal' | 'despesas')}>
+          <Tabs defaultValue="trabalho" value={activeTab} onValueChange={(value) => setActiveTab(value as 'trabalho' | 'pessoal' | 'despesa')}>
             <TabsList>
               <TabsTrigger value="trabalho">Trabalho</TabsTrigger>
-              <TabsTrigger value="despesas">Despesas</TabsTrigger>
+              <TabsTrigger value="despesa">Despesa</TabsTrigger>
               <TabsTrigger value="pessoal">Pessoal</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -222,16 +228,16 @@ export default function LancamentosPage() {
       </div>
 
       <Card>
-        {activeTab === 'despesas' ? (
+        {activeTab === 'despesa' ? (
           <CardHeader>
-            <CardTitle>Histórico de Despesas</CardTitle>
-            <CardDescription>Visualize e gerencie suas despesas.</CardDescription>
+            <CardTitle>Histórico de Despesa</CardTitle>
+            <CardDescription>Visualize e gerencie suas despesa.</CardDescription>
           </CardHeader>
 
         ) : (
           <CardHeader>
             <CardTitle>Histórico de Lançamentos</CardTitle>
-            <CardDescription>Visualize e gerencie seus lançamentos.</CardDescription>
+            <CardDescription>Visualize e gerencie seus lançamentos {activeTab === 'pessoal' && 'pessoais'}.</CardDescription>
           </CardHeader>
         )}
         <CardContent>
@@ -242,7 +248,7 @@ export default function LancamentosPage() {
                 <TableRow>
                   <TableHead>Dia</TableHead>
                   <TableHead>Data</TableHead>
-                  {activeTab === 'despesas' ? (
+                  {activeTab === 'despesa' ? (
                     <>
                       <TableHead>Descrição</TableHead>
                       <TableHead>Categoria</TableHead>
@@ -255,7 +261,7 @@ export default function LancamentosPage() {
                         <>
                           <TableHead>Ganho Bruto</TableHead>
                           <TableHead>Ganho Líquido</TableHead>
-                          <TableHead>Despesas</TableHead>
+                          <TableHead>Despesa</TableHead>
                           <TableHead>Gasto em %</TableHead>
                           <TableHead>Duração</TableHead>
                         </>
@@ -275,27 +281,27 @@ export default function LancamentosPage() {
               <TableBody>
                 {isLoading ? <TableSkeleton /> : error ? (
                   <TableRow>
-                    <TableCell colSpan={activeTab === 'despesas' ? 5 : 8} className="text-center text-destructive">
+                    <TableCell colSpan={activeTab === 'despesa' ? 5 : 8} className="text-center text-destructive">
                       <AlertCircle className="inline-block mr-2 h-5 w-5" /> {error}
                     </TableCell>
                   </TableRow>
                 ) : records.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={activeTab === 'despesas' ? 5 : 8} className="text-center">Nenhum lançamento encontrado.</TableCell>
+                    <TableCell colSpan={activeTab === 'despesa' ? 5 : 8} className="text-center">Nenhum lançamento encontrado.</TableCell>
                   </TableRow>
                 ) : (
                   records.map(record => (
                     <TableRow key={record._id}>
                       <TableCell>{record.weekDay}</TableCell>
                       <TableCell>{format(parseISO(record.date), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
-                      {activeTab === 'despesas' ? (
+                      {activeTab === 'despesa' ? (
                         record && 'description' in record && 'category' in record && 'price' in record ? (
                           <>
                             <TableCell>{record.description}</TableCell>
-                            <TableCell>{record.category}</TableCell>
+                            <TableCell>{formatCategoryName(record.category)}</TableCell>
                             <TableCell className="text-red-600">R$ {record.price.toFixed(2).replace(".", ",")}</TableCell>
                           </>
-                        ) : <TableCell colSpan={3}>Tipo de registro inesperado para Despesas.</TableCell>
+                        ) : <TableCell colSpan={3}>Tipo de registro inesperado para Despesa.</TableCell>
                       ) : (
                         record && 'distance' in record ? (
                           <>
@@ -344,7 +350,7 @@ export default function LancamentosPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {activeTab !== "despesas" && (
+                            {activeTab !== "despesa" && (
                               <DropdownMenuItem onSelect={() => handleEditClick(record)}>
                                 <Edit className="mr-2 h-4 w-4" /> Editar
                               </DropdownMenuItem>
@@ -363,7 +369,7 @@ export default function LancamentosPage() {
           </div>
 
           {/* Cards mobile */}
-          {/* <div className="sm:hidden space-y-4">
+          <div className="sm:hidden space-y-4">
             {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <Card key={i} className="p-4 space-y-2">
@@ -385,14 +391,14 @@ export default function LancamentosPage() {
                     <div className="text-sm font-medium text-muted-foreground">
                       {record.weekDay} - {format(parseISO(record.date), "dd/MM/yyyy", { locale: ptBR })}
                     </div>
-                    {activeTab === 'despesas' ? (
+                    {activeTab === 'despesa' ? (
                       record && 'description' in record && 'category' in record && 'price' in record ? (
                         <>
                           <div className="text-sm"><strong>Descrição:</strong> {record.description}</div>
                           <div className="text-sm"><strong>Categoria:</strong> {record.category}</div>
                           <div className="text-sm text-red-600"><strong>Preço:</strong> R$ {record.price.toFixed(2).replace(".", ",")}</div>
                         </>
-                      ) : <div className="text-sm text-destructive">Tipo de registro inesperado para Despesas.</div>
+                      ) : <div className="text-sm text-destructive">Tipo de registro inesperado para Despesa.</div>
                     ) : (
                       record && 'distance' in record ? (
                         <>
@@ -414,7 +420,7 @@ export default function LancamentosPage() {
                                     : "text-muted-foreground"
                                   }`}><strong>Ganho Líquido:</strong> R$ {record.liquidGain?.toFixed(2).replace(".", ",")}</div>
                                 <div className={`text-sm ${(record.spent || 0) > 0 ? "text-red-600" : "text-muted-foreground"
-                                  }`}><strong>Despesas:</strong> R$ {record.spent?.toFixed(2).replace(".", ",")}</div>
+                                  }`}><strong>Despesa:</strong> R$ {record.spent?.toFixed(2).replace(".", ",")}</div>
                                 <div className="text-sm"><strong>Gasto em %:</strong> {record.percentageSpent?.toFixed(2).replace(".", ",")}%</div>
                                 <div className="text-sm"><strong>Duração:</strong> {formatMinutesToHours(record.timeWorked ?? 0)}</div>
                               </>
@@ -428,7 +434,7 @@ export default function LancamentosPage() {
                                 <div className="text-sm"><strong>Gasto Gasolina:</strong> R$ {record.gasolineExpense?.toFixed(2).replace(".", ",")}
                                 </div>
                               </>
-                            ) : <div classNameName="text-sm text-destructive">Tipo de registro inesperado para Pessoal.</div>
+                            ) : <div className="text-sm text-destructive">Tipo de registro inesperado para Pessoal.</div>
                           )}
                         </>
                       ) : <div className="text-sm text-destructive">Tipo de registro inesperado.</div>
@@ -438,8 +444,8 @@ export default function LancamentosPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => activeTab !== "despesas" && handleEditClick(record)}
-                        disabled={activeTab === "despesas"}
+                        onClick={() => activeTab !== "despesa" && handleEditClick(record)}
+                        disabled={activeTab === "despesa"}
                       >
                         <Edit className="h-4 w-4 mr-1" /> Editar
                       </Button>
@@ -451,7 +457,7 @@ export default function LancamentosPage() {
                 </Card>
               ))
             )}
-          </div> */}
+          </div>
         </CardContent>
       </Card>
 

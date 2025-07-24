@@ -206,12 +206,16 @@ export default function DashboardPage() {
         if (!entriesResponse.ok) throw new Error("Erro ao buscar lançamentos.");
         const entries: Entry[] = await entriesResponse.json();
 
+
+        // Filter only entries with type === 'entry'
+        const filteredEntries = entries.filter(entry => entry.type === 'entry');
+
         // Calculate daily gross gain and format date to day name --------------
         const dailyDataMap = new Map<string, { grossGain: number; date: string }>();
-        entries.forEach(entry => {
+        filteredEntries.forEach(entry => {
           // Format date to yyyy-MM-dd to ensure correct daily aggregation
           const date = format(parseISO(entry.date), 'yyyy-MM-dd');
-           if (dailyDataMap.has(date)) {
+          if (dailyDataMap.has(date)) {
             dailyDataMap.get(date)!.grossGain += entry.grossGain;
           } else {
             dailyDataMap.set(date, { grossGain: entry.grossGain, date: entry.date });
@@ -234,6 +238,7 @@ export default function DashboardPage() {
         );
         if (!resumeResponse.ok) throw new Error("Erro ao buscar resumo.");
         const resume = await resumeResponse.json();
+        console.log(resume);
         setResumeData(resume);
 
         // Maintenance ---------------------------------------------------------
@@ -374,13 +379,13 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Outros Gastos"
-            value={resumeData?.otherExpense ?? 0}
+            value={resumeData?.otherExpenseMinusFood ?? 0}
             icon={ShoppingCart}
             isLoading={isLoading}
             currency
           />
           <StatCard
-            title="Despesas de Manutenção e Combustível"
+            title="Despesas de Manutenção geral e Combustível"
             value={maintenanceFuelTotal}
             icon={Wrench}
             isLoading={isLoading}
