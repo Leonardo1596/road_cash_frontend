@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">RoadCash</string>
+    <string name="title_activity_main">RoadCash</string>
+    <string name="package_name">com.leonardo.roadcash</string>
+    <string name="custom_url_scheme">com.leonardo.roadcash</string>
+</resources>

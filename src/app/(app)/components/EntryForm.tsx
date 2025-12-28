@@ -145,8 +145,8 @@ export function EntryForm({
 
     const baseUrl =
       activeTab === "pessoal"
-        ? "https://road-cash.onrender.com/personal-entry"
-        : "https://road-cash.onrender.com/entry";
+        ? "https://road-cash-backend.onrender.com/personal-entry"
+        : "https://road-cash-backend.onrender.com/entry";
 
     const url = isEditing
       ? `${baseUrl}/update/${userId}/${entry._id}`

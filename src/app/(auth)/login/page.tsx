@@ -45,7 +45,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
-      const response = await fetch('https://road-cash.onrender.com/auth/sign-in', {
+      const response = await fetch('https://road-cash-backend.onrender.com/auth/sign-in', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

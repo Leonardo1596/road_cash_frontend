@@ -91,7 +91,7 @@ export default function LancamentosPage() {
       } else if (activeTab === 'despesa') {
         baseRoute = 'get/expenses';
       }
-      const url = `https://road-cash.onrender.com/${baseRoute}?userId=${userId}&from=${from}&to=${to}`;
+      const url = `https://road-cash-backend.onrender.com/${baseRoute}?userId=${userId}&from=${from}&to=${to}`;
 
       try {
         const response = await fetch(url, {
@@ -142,11 +142,11 @@ export default function LancamentosPage() {
 
     let url = '';
     if (activeTab === 'trabalho') {
-      url = `https://road-cash.onrender.com/entry/delete/${userId}/${entryToDelete}`;
+      url = `https://road-cash-backend.onrender.com/entry/delete/${userId}/${entryToDelete}`;
     } else if (activeTab === 'pessoal') {
-      url = `https://road-cash.onrender.com/personal-entry/delete/${userId}/${entryToDelete}`;
+      url = `https://road-cash-backend.onrender.com/personal-entry/delete/${userId}/${entryToDelete}`;
     } else if (activeTab === 'despesa') {
-      url = `https://road-cash.onrender.com/entry/delete/${userId}/${entryToDelete}`; // Assuming an endpoint for deleting expenses
+      url = `https://road-cash-backend.onrender.com/entry/delete/${userId}/${entryToDelete}`; // Assuming an endpoint for deleting expenses
     }
 
     try {

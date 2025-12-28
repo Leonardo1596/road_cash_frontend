@@ -49,7 +49,7 @@ export default function SettingsPage() {
     });
 
   const updateCostPerKm = async (userId: string, costPerKmId: string, data: any, token: string) => {
-    const url = `https://road-cash.onrender.com/cost_per_km/update/${userId}/${costPerKmId}`;
+    const url = `https://road-cash-backend.onrender.com/cost_per_km/update/${userId}/${costPerKmId}`;
     try {
       const response = await fetch(url, {
         method: 'PUT',
@@ -84,7 +84,7 @@ export default function SettingsPage() {
             }
     
             try {
-                const response = await fetch(`https://road-cash.onrender.com/get/costPerKm/${userId}`, {
+                const response = await fetch(`https://road-cash-backend.onrender.com/get/costPerKm/${userId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
